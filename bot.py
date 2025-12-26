@@ -1,11 +1,11 @@
 import os
 import logging
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, BotCommand
 from telegram.constants import ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
 # ==============================================================================
-# ⚙️ AYARLAR VE LİNKLER
+# ⚙️ AYARLAR VE LİNKLER (TÜM LİNKLERİN KORUNDU)
 # ==============================================================================
 TOKEN = "8031564377:AAHjJXBQ-b6f0BnKdbf6T7iwUjs1fCA7dW0"
 RESIM_YOLU = "banner.jpg"
@@ -16,18 +16,27 @@ LINK_OZEL_ORAN_KANAL  = "https://t.me/Starzbetgir"
 LINK_BONUS            = "https://starzbet422.com/tr-tr/info/promos"
 LINK_CANLI_DESTEK     = "https://service.3kanumaigc.com/chatwindow.aspx?siteId=90005302&planId=1b050682-cde5-4176-8236-3bb94c891197#"
 LINK_APP              = "https://starzmobil.com/indir/"
-# SENİN OYUN LİNKİN (Vercel)
 LINK_MINI_APP         = "https://telegram-mini-app-umber-chi.vercel.app" 
 # ==============================================================================
 
-# --- 🧠 AKILLI KELİME TAKİBİ (DEĞİŞMEDİ) ---
+# --- ⚙️ BOT MENÜSÜNÜ KURMA (YENİ EKLEME) ---
+async def post_init(application):
+    commands = [
+        BotCommand("start", "🔥 Maceraya ilk adımı at!"),
+        BotCommand("mini_app", "🎰 Starzbet Dünyasına Giriş Yap"),
+        BotCommand("guncel_link", "🔗 Güncel Giriş Adresini Öğren"),
+        BotCommand("canli_destek", "🆘 Bir sorun mu var kanka?"),
+    ]
+    await application.bot.set_my_commands(commands)
+
+# --- 🧠 AKILLI KELİME TAKİBİ (KORUNDU) ---
 async def kelime_takip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text: return
     msg = update.message.text.lower()
     
     if any(k in msg for k in ["starzbet", "link", "giriş", "adres", "site", "güncel"]):
         text = "🚀 <b>STARZBET GÜNCEL GİRİŞ</b>\n━━━━━━━━━━━━━━━━━━━━\n🔗 " + LINK_GIRIS
-        kb = [[InlineKeyboardButton("🟢 GÜNCEL GİRİŞ ADRESİ", url=LINK_GIRIS)]]
+        kb = [[InlineKeyboardButton("🟠 GÜNCEL GİRİŞ ADRESİ", url=LINK_GIRIS)]] # Emojiyi turuncu yaptım
         await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(kb), parse_mode=ParseMode.HTML)
 
     elif any(k in msg for k in ["maç", "oran", "kupon", "bahis", "tahmin", "özel", "bülten"]):
@@ -55,27 +64,25 @@ async def buton_tiklama(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                                                                             [InlineKeyboardButton("⬅️ GERİ DÖN", callback_data='btn_back')]]), 
                                          parse_mode=ParseMode.HTML)
     elif query.data == 'btn_back':
-        # Geri dönme butonu için start menüsünü tekrar çağırıyoruz
         await query.delete_message()
         await start(update, context)
 
-# --- START KOMUTU (GÜNCELLENDİ) ---
+# --- START KOMUTU (TURUNCU DOKUNUŞLAR) ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Eğer callback_query'den geliyorsa (Geri butonu gibi)
     effective_message = update.message if update.message else update.callback_query.message
     
     text = (
-        "🏆 <b>STARZBET KÜÇÜK DÜNYASINA HOŞ GELDİN!</b>\n"
+        "🏆 <b>STARZBET MİNİ DÜNYASINA HOŞ GELDİN!</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
         "Eğlence ve kazancın adresi Starzbet'te,\n"
         "Mini oyunlarımızı oynayarak vakit geçirebilir,\n"
-        "Güncel adresimize anında ulaşabilirsin. 👇"
+        "Liderlik tablosunda yerini alabilirsin. 🔥\n\n"
+        "🔗 <b>Hemen Başlamak İçin Dokun:</b> 👇"
     )
     
     kb = [
-          # EN ÜSTE DEV OYUN BUTONU
-          [InlineKeyboardButton("🎮 OYUNU BAŞLAT (PUAN KAZAN)", web_app=WebAppInfo(url=LINK_MINI_APP))],
-          [InlineKeyboardButton("🟢 GÜNCEL GİRİŞ", url=LINK_GIRIS)],
+          [InlineKeyboardButton("🎰 STARZBET MİNİ (OYNA)", web_app=WebAppInfo(url=LINK_MINI_APP))],
+          [InlineKeyboardButton("🟠 GÜNCEL GİRİŞ", url=LINK_GIRIS)],
           [InlineKeyboardButton("🎁 BONUSLAR", callback_data='btn_bonus'), InlineKeyboardButton("🎧 DESTEK", url=LINK_CANLI_DESTEK)],
           [InlineKeyboardButton("📱 MOBİL UYGULAMA", url=LINK_APP)]
          ]
@@ -85,14 +92,28 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await effective_message.reply_text(text, reply_markup=InlineKeyboardMarkup(kb), parse_mode=ParseMode.HTML)
 
+# --- EKSTRA KOMUTLAR ---
+async def guncel_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(f"🔗 <b>Güncel Giriş Adresimiz:</b>\n{LINK_GIRIS}", parse_mode=ParseMode.HTML)
+
+async def canli_destek(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    kb = [[InlineKeyboardButton("🎧 CANLI DESTEĞE BAĞLAN", url=LINK_CANLI_DESTEK)]]
+    await update.message.reply_text("🆘 <b>Destek Hattı</b>\nHer türlü sorun için yanındayız kanka!", reply_markup=InlineKeyboardMarkup(kb), parse_mode=ParseMode.HTML)
+
 if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
     
-    app = ApplicationBuilder().token(TOKEN).build()
+    # post_init buraya eklendi ki komutlar Telegram'a kaydolsun
+    app = ApplicationBuilder().token(TOKEN).post_init(post_init).build()
     
+    # Handler'lar (Start ve Kelime Takibi Korundu)
     app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("mini_app", start)) # Menüden tıklanırsa
+    app.add_handler(CommandHandler("guncel_link", guncel_link))
+    app.add_handler(CommandHandler("canli_destek", canli_destek))
+    
     app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), kelime_takip))
     app.add_handler(CallbackQueryHandler(buton_tiklama))
     
-    print("🚀 Starzbet V14 Aktif! Mini App Entegrasyonu Tamamlandı.")
+    print("🚀 Starzbet Mini Turbo Aktif! Menü ve Turuncu Tema Hazır.")
     app.run_polling()
