@@ -1,53 +1,79 @@
 <!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Eglencenin adresi </title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <style>
-        body { font-family: sans-serif; text-align: center; padding: 20px; background-color: var(--tg-theme-bg-color); color: var(--tg-theme-text-color); }
-        button { padding: 10px 20px; background-color: var(--tg-theme-button-color); color: var(--tg-theme-button-text-color); border: none; border-radius: 8px; cursor: pointer; }
-    </style>
-</head>
-<body>
-    <h1>Merhaba Kullanıcı!</h1>
-    <p>EĞLENCENİN MERKEZİNE HOŞGELDİN! .</p>
-    <button onclick="Telegram.WebApp.close()">Uygulamayı Kapat</button>
-
-    <script>
-        // Telegram Web App'i başlatıyoruz
-        const tele = window.Telegram.WebApp;
-        tele.ready(); // Uygulamanın hazır olduğunu bildirir
-    </script>
-</body>
-
-</html><!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taraftar Kazan</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { background: #000; color: gold; text-align: center; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; margin: 0; }
-        #coin { width: 150px; height: 150px; background: linear-gradient(145deg, #ffd700, #b8860b); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 50px; cursor: pointer; box-shadow: 0 0 20px #ffd700; transition: 0.1s; user-select: none; }
+        /* Arka planı senin istediğin o turuncu tonu yaptım */
+        body { 
+            background: #e67e22; 
+            color: white; 
+            text-align: center; 
+            font-family: 'Arial Black', sans-serif; 
+            height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            margin: 0; 
+        }
+
+        h1 { margin-bottom: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+
+        /* Futbol topu butonu */
+        #coin { 
+            width: 180px; 
+            height: 180px; 
+            background: white; 
+            border: 5px solid #d35400;
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 80px; 
+            cursor: pointer; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2); 
+            transition: transform 0.1s; 
+            user-select: none; 
+        }
+
         #coin:active { transform: scale(0.9); }
-        .score { font-size: 40px; margin-top: 20px; }
+
+        .score-container {
+            background: rgba(0,0,0,0.2);
+            padding: 10px 30px;
+            border-radius: 20px;
+            margin-top: 30px;
+        }
+
+        .score { font-size: 30px; }
     </style>
 </head>
 <body>
-    <div id="coin">🪙</div>
-    <div class="score">PUAN: <span id="puan">0</span></div>
+
+    <h1>TARAFTAR TOKEN KAZAN!</h1>
+    
+    <div id="coin">⚽</div>
+
+    <div class="score-container">
+        <div class="score">PUAN: <span id="puan">0</span></div>
+    </div>
 
     <script>
         let score = 0;
         const tg = window.Telegram.WebApp;
-        tg.expand(); // Uygulamayı tam ekran yap
+        tg.expand();
 
         document.getElementById('coin').onclick = () => {
             score++;
             document.getElementById('puan').innerText = score;
-            tg.HapticFeedback.impactOccurred('medium'); // Telefonda titreşim yapar
+            
+            // Telefonda "tık" hissi verir
+            if (tg.HapticFeedback) {
+                tg.HapticFeedback.impactOccurred('medium');
+            }
         };
     </script>
 </body>
