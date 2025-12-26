@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Starzbet Elite Pro</title>
+    <title>Starzbet Elite Pro v2</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Poppins:wght@300;600&display=swap');
@@ -24,7 +24,7 @@
         .card { background: var(--card); border-radius: 25px; padding: 25px; text-align: center; border: 1px solid #222; transition: 0.3s; position: relative; overflow: hidden; }
         .card:active { transform: scale(0.92); }
         .card i { font-size: 35px; display: block; margin-bottom: 10px; }
-        .card.new::before { content: "YENİ"; position: absolute; top: 10px; right: -20px; background: var(--gold); color: black; font-size: 9px; font-weight: bold; padding: 2px 25px; transform: rotate(45deg); }
+        .card.new::before { content: "V2"; position: absolute; top: 10px; right: -20px; background: var(--gold); color: black; font-size: 9px; font-weight: bold; padding: 2px 25px; transform: rotate(45deg); }
 
         .nav { position: fixed; bottom: 0; width: 100%; height: 80px; background: rgba(0,0,0,0.9); backdrop-filter: blur(10px); display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #333; padding-bottom: 15px; }
         .nav-btn { background: none; border: none; color: #555; font-size: 10px; display: flex; flex-direction: column; align-items: center; transition: 0.3s; }
@@ -32,7 +32,7 @@
 
         /* GAME STAGE */
         #stage { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; flex-direction: column; }
-        canvas { display: block; background: #000; touch-action: none; }
+        canvas { display: block; background: #000; touch-action: none; margin: auto; }
     </style>
 </head>
 <body>
@@ -46,13 +46,13 @@
         <div id="home" class="screen active">
             <div style="background:linear-gradient(135deg, #1a1a1a, #000); border: 1px solid #333; border-radius:20px; padding:20px; margin-bottom:25px; position: relative;">
                 <div style="color:var(--gold); font-family:'Orbitron'; font-size:16px;">STARZBET ELITE</div>
-                <p style="font-size:11px; color:#aaa; margin: 5px 0 0 0;">Yüksek grafikli oyunlarla sınırları zorla.</p>
+                <p style="font-size:11px; color:#aaa; margin: 5px 0 0 0;">Yenilenen grafiklerle kazanmaya başla.</p>
             </div>
             <div class="grid">
-                <div class="card" onclick="launch('tower')"><i>🏗️</i><span>KULE (PRO)</span></div>
-                <div class="card new" onclick="launch('rider')" style="border-color: var(--neon);"><i>⚡</i><span style="color:var(--neon)">NEON RIDER</span></div>
-                <div class="card" onclick="launch('snake')"><i>🐍</i><span>SNAKE X</span></div>
-                <div class="card" onclick="launch('memory')"><i>🧠</i><span>HAFIZA</span></div>
+                <div class="card new" onclick="launch('tower')"><i>🏗️</i><span>KULE PRO</span></div>
+                <div class="card new" onclick="launch('diamond')" style="border-color: var(--neon);"><i>💎</i><span style="color:var(--neon)">DIAMOND RAIN</span></div>
+                <div class="card new" onclick="launch('snake')"><i>🐍</i><span>SNAKE NEON</span></div>
+                <div class="card new" onclick="launch('memory')"><i>🎰</i><span>CASINO MEMORY</span></div>
             </div>
         </div>
 
@@ -68,8 +68,8 @@
     </div>
 
     <div id="stage">
-        <div style="padding:15px; display:flex; justify-content:space-between; align-items:center; background:#000;">
-            <button onclick="quitGame()" style="background:#ff3333; color:white; border:none; padding:8px 15px; border-radius:10px; font-weight:bold; font-size:12px;">ÇIKIŞ</button>
+        <div style="padding:15px; display:flex; justify-content:space-between; align-items:center; background:#000; border-bottom:1px solid #222;">
+            <button onclick="quitGame()" style="background:#ff3333; color:white; border:none; padding:8px 15px; border-radius:10px; font-weight:bold;">ÇIKIŞ</button>
             <div id="game-ui" style="font-family:'Orbitron'; font-size:20px; color:var(--gold);">0</div>
             <div style="width:50px"></div>
         </div>
@@ -134,158 +134,145 @@
 
         function launch(g) {
             document.getElementById('stage').style.display = 'flex';
-            cvs.width = window.innerWidth; cvs.height = window.innerHeight - 80;
+            cvs.width = Math.min(window.innerWidth, 500); 
+            cvs.height = window.innerHeight - 100;
             score = 0; active = true;
+            document.getElementById('game-ui').innerText = "0";
             if(g==='tower') runTower();
-            if(g==='rider') runRider();
+            if(g==='diamond') runDiamond();
             if(g==='snake') runSnake();
             if(g==='memory') runMemory();
         }
 
-        // --- 🏗️ KULE PRO (DÜŞME EFEKTİ VE HIZLANMA) ---
+        // --- 🏗️ KULE PRO V2 ---
         function runTower() {
             let blocks = [{x: cvs.width/2-60, y: cvs.height-40, w: 120}];
-            let cur = {x: 0, y: cvs.height-80, w: 120, v: 4};
-            let debris = [];
-            let camY = 0;
+            let cur = {x: 0, y: cvs.height-80, w: 120, v: 3.5};
+            let debris = []; let camY = 0;
 
             function run() {
                 if(!active) return;
                 ctx.clearRect(0,0,cvs.width,cvs.height);
                 ctx.save(); ctx.translate(0, camY);
-                
                 blocks.forEach((b, i) => {
                     ctx.fillStyle = i % 2 === 0 ? '#ffcc00' : '#aa8800';
-                    ctx.fillRect(b.x, b.y, b.w, 38);
+                    ctx.shadowBlur = 10; ctx.shadowColor = 'gold';
+                    ctx.fillRect(b.x, b.y, b.w, 38); ctx.shadowBlur = 0;
                 });
-
                 debris.forEach((d, i) => {
-                    d.y += 10; d.vY += 0.5;
-                    ctx.fillStyle = '#666'; ctx.fillRect(d.x, d.y, d.w, 38);
-                    if(d.y > cvs.height + 500) debris.splice(i,1);
+                    d.y += 8; ctx.fillStyle = '#444'; ctx.fillRect(d.x, d.y, d.w, 38);
+                    if(d.y > cvs.height + 100) debris.splice(i,1);
                 });
-
                 ctx.fillStyle = '#fff'; ctx.fillRect(cur.x, cur.y, cur.w, 38);
                 ctx.restore();
-
-                cur.x += cur.v;
-                if(cur.x + cur.w > cvs.width || cur.x < 0) cur.v *= -1;
+                cur.x += cur.v; if(cur.x + cur.w > cvs.width || cur.x < 0) cur.v *= -1;
                 loop = requestAnimationFrame(run);
             }
             run();
-
             cvs.onclick = () => {
                 let prev = blocks[blocks.length-1];
                 let diff = cur.x - prev.x;
                 if(Math.abs(diff) >= cur.w) return end();
-
-                if(diff > 0) { // Sağdan düştü
-                    debris.push({x: prev.x + cur.w, y: cur.y, w: diff, vY: 0});
-                    cur.w -= diff;
-                } else { // Soldan düştü
-                    debris.push({x: cur.x, y: cur.y, w: Math.abs(diff), vY: 0});
-                    cur.w += diff; cur.x = prev.x;
-                }
-
+                if(diff > 0) { debris.push({x: prev.x + cur.w, y: cur.y, w: diff}); cur.w -= diff; } 
+                else { debris.push({x: cur.x, y: cur.y, w: Math.abs(diff)}); cur.w += diff; cur.x = prev.x; }
                 score++; document.getElementById('game-ui').innerText = score;
                 blocks.push({x: cur.x, y: cur.y, w: cur.w});
-                cur.y -= 40; if(blocks.length > 5) camY += 40;
-                
-                // HIZLANMA MANTIĞI
-                let speedBoost = score > 10 ? (score - 10) * 0.15 : 0;
-                cur.v = (Math.abs(cur.v) + speedBoost + 0.1) * (cur.v > 0 ? 1 : -1);
+                cur.y -= 40; if(blocks.length > 6) camY += 40;
+                cur.v = (Math.abs(cur.v) + 0.2) * (cur.v > 0 ? 1 : -1);
                 tg.HapticFeedback.impactOccurred('medium');
             };
         }
 
-        // --- ⚡ NEON RIDER (3D GÖRÜNÜMLÜ YÜKSEK GRAFİK) ---
-        function runRider() {
-            let player = { x: cvs.width/2, w: 40 };
-            let obstacles = [];
-            let frame = 0;
-            let speed = 7;
-
+        // --- 💎 DIAMOND RAIN (YENİ GRAFİKLİ OYUN) ---
+        function runDiamond() {
+            let p = { x: cvs.width/2-25, w: 60 };
+            let items = []; let f = 0;
             function run() {
-                if(!active) return;
-                frame++;
+                if(!active) return; f++;
                 ctx.fillStyle = '#000'; ctx.fillRect(0,0,cvs.width,cvs.height);
+                // Background Glow
+                let g = ctx.createRadialGradient(cvs.width/2, cvs.height/2, 10, cvs.width/2, cvs.height/2, 300);
+                g.addColorStop(0, '#001122'); g.addColorStop(1, '#000');
+                ctx.fillStyle = g; ctx.fillRect(0,0,cvs.width,cvs.height);
 
-                // Tünel Çizimi (Neon Efekti)
-                for(let i=0; i<10; i++) {
-                    ctx.strokeStyle = `rgba(0, 242, 255, ${0.1 * i})`;
-                    let offset = (frame * speed) % 100;
-                    ctx.strokeRect(cvs.width/2 - 50*i - offset, cvs.height/2 - 50*i - offset, 100*i + offset*2, 100*i + offset*2);
-                }
-
-                // Engeller
-                if(frame % 40 === 0) obstacles.push({x: Math.random()*(cvs.width-60), y: -100, w: 60, h: 20});
-                
-                obstacles.forEach((o, i) => {
-                    o.y += speed;
-                    ctx.fillStyle = '#ff0066';
-                    ctx.shadowBlur = 20; ctx.shadowColor = '#ff0066';
-                    ctx.fillRect(o.x, o.y, o.w, o.h);
-                    ctx.shadowBlur = 0;
-                    if(o.y > cvs.height) obstacles.splice(i,1);
-                    if(player.x < o.x + o.w && player.x + player.w > o.x && cvs.height-120 < o.y + o.h && cvs.height-120 + 40 > o.y) end();
+                if(f % 30 === 0) items.push({x: Math.random()*(cvs.width-30), y: -50, t: Math.random()>0.2?'💎':'💣'});
+                items.forEach((it, i) => {
+                    it.y += 5 + (score/10);
+                    ctx.font = "30px Arial"; ctx.fillText(it.t, it.x, it.y);
+                    if(it.y > cvs.height) items.splice(i, 1);
+                    if(it.y > cvs.height-80 && it.x > p.x-20 && it.x < p.x+p.w+20) {
+                        if(it.t === '💎') { score += 10; items.splice(i, 1); tg.HapticFeedback.notificationOccurred('success'); }
+                        else end();
+                    }
                 });
-
-                // Oyuncu (Gemi)
-                ctx.fillStyle = '#00f2ff';
-                ctx.shadowBlur = 15; ctx.shadowColor = '#00f2ff';
-                ctx.fillRect(player.x, cvs.height-120, player.w, 40);
-                ctx.shadowBlur = 0;
-
-                speed += 0.002;
-                score++; document.getElementById('game-ui').innerText = Math.floor(score/10);
+                document.getElementById('game-ui').innerText = score;
+                ctx.fillStyle = varColor('--gold');
+                ctx.shadowBlur = 20; ctx.shadowColor = 'gold';
+                ctx.fillRect(p.x, cvs.height-60, p.w, 15); ctx.shadowBlur = 0;
                 loop = requestAnimationFrame(run);
             }
             run();
-
-            cvs.ontouchmove = (e) => {
-                let rect = cvs.getBoundingClientRect();
-                player.x = e.touches[0].clientX - rect.left - player.w/2;
-                if(player.x < 0) player.x = 0;
-                if(player.x > cvs.width - player.w) player.x = cvs.width - player.w;
-            };
+            cvs.ontouchmove = (e) => { p.x = e.touches[0].clientX - cvs.offsetLeft - p.w/2; };
         }
 
-        // --- 🐍 SNAKE X (KLASİK AMA SERT) ---
+        // --- 🐍 SNAKE NEON (ÇERÇEVE VE GÖRSEL) ---
         function runSnake() {
             let s = [{x:10,y:10}], f = {x:5,y:5}, d = {x:1,y:0}, nextD = {x:1,y:0}, t = 0;
+            const sz = 20; const w = Math.floor(cvs.width/sz), h = Math.floor(cvs.height/sz);
             function run() {
                 if(!active) return;
-                if(++t < 6) { loop = requestAnimationFrame(run); return; }
-                t = 0; d = nextD;
-                ctx.clearRect(0,0,cvs.width,cvs.height);
+                if(++t < 8) { loop = requestAnimationFrame(run); return; } t = 0;
+                d = nextD; ctx.fillStyle = '#050505'; ctx.fillRect(0,0,cvs.width,cvs.height);
+                // Border
+                ctx.strokeStyle = 'rgba(0, 242, 255, 0.3)'; ctx.lineWidth = 5; ctx.strokeRect(0,0,cvs.width,cvs.height);
+                
                 let head = {x: s[0].x + d.x, y: s[0].y + d.y};
-                if(head.x===f.x && head.y===f.y) {
-                    score += 50; f = {x:Math.floor(Math.random()*18), y:Math.floor(Math.random()*25)};
+                // Çerçeve Kontrolü (Duvara çarpınca yanar)
+                if(head.x < 0 || head.x >= w || head.y < 0 || head.y >= h || s.some(p => p.x == head.x && p.y == head.y)) return end();
+                
+                if(head.x === f.x && head.y === f.y) {
+                    score += 50; f = {x:Math.floor(Math.random()*(w-1)), y:Math.floor(Math.random()*(h-1))};
+                    tg.HapticFeedback.impactOccurred('light');
                 } else s.pop();
-                if(head.x<0||head.y<0||head.x>=20||head.y>=30||s.some(p=>p.x==head.x&&p.y==head.y)) return end();
+                
                 s.unshift(head);
                 document.getElementById('game-ui').innerText = score;
-                ctx.fillStyle = '#00f2ff'; s.forEach(p => ctx.fillRect(p.x*20, p.y*20, 18, 18));
-                ctx.fillStyle = '#ff0066'; ctx.fillRect(f.x*20, f.y*20, 18, 18);
+                // Draw Neon Snake
+                s.forEach((p, i) => {
+                    ctx.fillStyle = i === 0 ? '#00f2ff' : 'rgba(0, 242, 255, 0.5)';
+                    ctx.shadowBlur = i === 0 ? 15 : 0; ctx.shadowColor = '#00f2ff';
+                    ctx.beginPath(); ctx.roundRect(p.x*sz, p.y*sz, sz-2, sz-2, 5); ctx.fill();
+                });
+                ctx.fillStyle = '#ffcc00'; ctx.beginPath(); ctx.arc(f.x*sz+10, f.y*sz+10, 8, 0, 7); ctx.fill();
                 loop = requestAnimationFrame(run);
             }
             run();
             cvs.onclick = () => { let x = nextD.x; nextD.x = -nextD.y; nextD.y = x; };
         }
 
-        // --- 🧠 HAFIZA ---
+        // --- 🎰 CASINO MEMORY (3D FLIP VE DESENLİ) ---
         function runMemory() {
-            let cards = ['🎰','🎰','🎲','🎲','💎','💎','🃏','🃏','🔥','🔥','💰','💰'];
-            cards.sort(() => Math.random() - 0.5);
+            let icons = ['🎰','🎲','💎','🃏','7️⃣','💰'];
+            let cards = [...icons, ...icons].sort(() => Math.random() - 0.5).map(v => ({v, s:0, a:0})); 
             let flip = [], done = 0;
             function run() {
                 if(!active) return; ctx.clearRect(0,0,cvs.width,cvs.height);
                 cards.forEach((c, i) => {
-                    let x = (i%3)*110+30, y = Math.floor(i/3)*110+50;
-                    ctx.fillStyle = '#111'; ctx.fillRect(x,y,90,90);
-                    if(flip.includes(i) || c === 'V') {
-                        ctx.font = "40px Arial"; ctx.textAlign="center"; ctx.fillText(c==='V'?'⭐':c, x+45, y+60);
+                    let x = (i%3)*110+40, y = Math.floor(i/3)*110+60;
+                    ctx.save(); ctx.translate(x+45, y+45);
+                    if(c.s === 1) { // Flip Animasyonu
+                        c.a = Math.min(c.a + 0.1, 1);
+                        ctx.scale(1 - c.a, 1);
                     }
+                    // Kartın Arkası (Desenli)
+                    ctx.fillStyle = '#1a1a1a'; ctx.strokeStyle = '#ffcc00'; ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.roundRect(-45,-45,90,90, 10); ctx.fill(); ctx.stroke();
+                    // Kartın Önü
+                    if(c.s === 1 || c.v === 'V') {
+                        ctx.scale(-1, 1); ctx.font = "40px Arial"; ctx.textAlign="center";
+                        ctx.fillText(c.v === 'V' ? '⭐' : c.v, 0, 15);
+                    }
+                    ctx.restore();
                 });
                 if(done === 6) { score = 1000; end(); }
                 loop = requestAnimationFrame(run);
@@ -294,23 +281,29 @@
             cvs.onclick = (e) => {
                 let r = cvs.getBoundingClientRect(), mx = e.clientX-r.left, my = e.clientY-r.top;
                 cards.forEach((c, i) => {
-                    let x = (i%3)*110+30, y = Math.floor(i/3)*110+50;
-                    if(mx>x && mx<x+90 && my>y && my<y+90 && cards[i]!=='V' && !flip.includes(i) && flip.length<2) {
-                        flip.push(i);
+                    let x = (i%3)*110+40, y = Math.floor(i/3)*110+60;
+                    if(mx>x && mx<x+90 && my>y && my<y+90 && c.v!=='V' && !flip.includes(i) && flip.length<2) {
+                        c.s = 1; flip.push(i);
                         if(flip.length===2) {
-                            if(cards[flip[0]]===cards[flip[1]]) { setTimeout(()=>{ cards[flip[0]]=cards[flip[1]]='V'; done++; flip=[]; }, 300); }
-                            else { setTimeout(()=>{ flip=[]; }, 600); }
+                            if(cards[flip[0]].v === cards[flip[1]].v) {
+                                setTimeout(()=>{ cards[flip[0]].v = cards[flip[1]].v = 'V'; done++; flip=[]; }, 500);
+                            } else {
+                                setTimeout(()=>{ cards[flip[0]].s = cards[flip[1]].s = 0; cards[flip[0]].a = cards[flip[1]].a = 0; flip=[]; }, 800);
+                            }
                         }
                     }
                 });
             };
         }
 
+        function varColor(name) { return getComputedStyle(document.documentElement).getPropertyValue(name); }
+
         async function end() {
             active = false; cancelAnimationFrame(loop);
-            const finalScore = Math.floor(score);
-            if(window.saveGlobal) await window.saveGlobal(finalScore);
-            alert("OYUN BİTTİ! SKORUN: " + finalScore);
+            const final = Math.floor(score);
+            if(window.saveGlobal) await window.saveGlobal(final);
+            tg.HapticFeedback.notificationOccurred('error');
+            alert("OYUN BİTTİ! SKORUN: " + final);
             quitGame();
         }
 
