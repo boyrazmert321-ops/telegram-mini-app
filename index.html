@@ -3,261 +3,233 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Elite Mini App Hub</title>
+    <title>Starzbet Gaming World</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root {
-            --primary: #0088cc;
-            --accent: #7d4cf6;
-            --bg: #0b0e11;
-            --card: #1c2127;
-            --text: #ffffff;
-            --text-muted: #8b949e;
-        }
+        :root { --primary: #ffcc00; --accent: #00ffcc; --bg: #050505; --card: #121212; --text: #ffffff; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        body { background: var(--bg); color: var(--text); font-family: 'Poppins', sans-serif; margin: 0; overflow: hidden; height: 100vh; }
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; margin: 0; overflow: hidden; height: 100vh; }
-
-        /* SPLASH SCREEN */
+        /* GİRİŞ EKRANI (SPLASH) */
         #splash {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--bg); display: flex; flex-direction: column;
-            justify-content: center; align-items: center; z-index: 9999;
-            transition: opacity 0.5s ease;
+            background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
+            display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10000;
         }
-        .loader { width: 50px; height: 50px; border: 5px solid #333; border-top: 5px solid var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
+        .loader { width: 80px; height: 80px; border: 4px solid #333; border-top: 4px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; box-shadow: 0 0 15px var(--primary); }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* MAIN APP STRUCTURE */
+        /* ANA YAPI */
         #app { display: none; height: 100vh; flex-direction: column; }
+        .header { padding: 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #222; }
+        .balance { background: #1a1a1a; padding: 8px 15px; border-radius: 30px; border: 1px solid var(--primary); font-weight: bold; color: var(--primary); }
 
-        /* HEADER */
-        .header { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; background: rgba(28, 33, 39, 0.8); backdrop-filter: blur(10px); }
-        .user-box { display: flex; align-items: center; gap: 10px; }
-        .avatar { width: 35px; height: 35px; background: var(--accent); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; }
-        .balance-box { background: rgba(255,255,255,0.05); padding: 5px 12px; border-radius: 20px; border: 1px solid rgba(125,76,246,0.3); }
-
-        /* SCREEN MANAGEMENT */
+        /* EKRANLAR */
         .screen { flex-grow: 1; display: none; overflow-y: auto; padding: 20px; padding-bottom: 100px; }
-        .screen.active { display: block; animation: fadeIn 0.3s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .screen.active { display: block; animation: slideUp 0.4s ease; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* HOME SCREEN CARDS */
-        .banner { width: 100%; height: 150px; background: linear-gradient(45deg, var(--accent), #b06ab3); border-radius: 20px; margin-bottom: 25px; display: flex; align-items: center; padding: 20px; position: relative; overflow: hidden; }
-        .banner::after { content: '🎮'; position: absolute; right: -10px; bottom: -10px; font-size: 100px; opacity: 0.2; }
+        /* OYUN KARTLARI */
+        .game-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .game-card { background: var(--card); border-radius: 20px; padding: 25px 15px; text-align: center; border: 1px solid #222; transition: 0.3s; position: relative; overflow: hidden; }
+        .game-card:active { transform: scale(0.95); border-color: var(--primary); }
+        .game-card i { font-size: 45px; display: block; margin-bottom: 12px; }
+        .game-card h3 { margin: 0; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; }
 
-        .game-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .game-card { background: var(--card); border-radius: 18px; padding: 20px; text-align: center; border: 1px solid #30363d; transition: 0.2s; }
-        .game-card:active { transform: scale(0.95); background: #252b33; }
-        .game-card .icon { font-size: 40px; margin-bottom: 10px; display: block; }
-        .game-card h3 { margin: 0; font-size: 16px; }
+        /* OYUN SAHNESİ */
+        #game-stage { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 9999; display: none; flex-direction: column; }
+        canvas { background: #080808; display: block; margin: auto; border: 2px solid #222; }
+        .game-nav { padding: 15px; display: flex; justify-content: space-between; align-items: center; background: #111; }
 
-        /* GAME OVERLAY */
-        #game-stage { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 1000; display: none; flex-direction: column; }
-        canvas { background: #000; touch-action: none; width: 100%; height: 80%; }
-        .game-ui { padding: 20px; display: flex; justify-content: space-between; align-items: center; }
-
-        /* NAVIGATION BAR */
-        .nav-bar { position: fixed; bottom: 0; width: 100%; height: 75px; background: rgba(22, 27, 34, 0.95); backdrop-filter: blur(15px); display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #30363d; padding-bottom: 15px; }
-        .nav-btn { background: none; border: none; color: var(--text-muted); display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 10px; font-weight: 500; cursor: pointer; transition: 0.2s; }
-        .nav-btn.active { color: var(--accent); }
-        .nav-btn .icon { font-size: 22px; }
+        /* ALT MENÜ */
+        .nav { position: fixed; bottom: 0; width: 100%; height: 80px; background: #0a0a0a; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #222; padding-bottom: 10px; }
+        .nav-item { background: none; border: none; color: #555; display: flex; flex-direction: column; align-items: center; font-size: 10px; }
+        .nav-item.active { color: var(--primary); }
     </style>
 </head>
 <body>
 
     <div id="splash">
         <div class="loader"></div>
-        <h2 style="margin-top: 20px; letter-spacing: 2px;">PRO GAMER</h2>
+        <h2 style="color:var(--primary); margin-top:30px; text-align:center; padding: 0 20px;">STARZBET'İN KÜÇÜK DÜNYASINA HOŞGELDİNİZ</h2>
     </div>
 
     <div id="app">
         <div class="header">
-            <div class="user-box">
-                <div class="avatar" id="avatar-init">?</div>
-                <div id="user-name">Oyuncu</div>
-            </div>
-            <div class="balance-box">
-                <span style="color: gold;">💎</span> <span id="total-balance">0</span>
-            </div>
+            <div id="user-info" style="font-weight:bold;">OYUNCU</div>
+            <div class="balance">💰 <span id="puan-toplam">0</span></div>
         </div>
 
         <div id="home" class="screen active">
-            <div class="banner">
-                <div>
-                    <h2 style="margin:0">Yeni Görevler!</h2>
-                    <p style="margin:5px 0; opacity: 0.8;">Hemen oyna, 500 puan kazan.</p>
-                </div>
+            <div style="background: linear-gradient(90deg, #ffcc00, #ff9900); padding: 20px; border-radius: 20px; color: #000;">
+                <h2 style="margin:0">Günün Şanslısı Sen misin?</h2>
+                <p style="margin:5px 0">Oyunları oyna, sıralamada yüksel!</p>
             </div>
-            
-            <h3 style="margin-bottom: 15px;">Favori Oyunların</h3>
+
             <div class="game-grid">
-                <div class="game-card" onclick="startTowerGame()">
-                    <span class="icon">🏗️</span>
-                    <h3>Kule Dikme</h3>
-                </div>
-                <div class="game-card" onclick="startSpaceGame()">
-                    <span class="icon">🚀</span>
-                    <h3>Uzay Kaçışı</h3>
-                </div>
-                <div class="game-card" onclick="alert('Yakında!')">
-                    <span class="icon">🧩</span>
-                    <h3>Tetris Pro</h3>
-                </div>
-                <div class="game-card" onclick="alert('Yakında!')">
-                    <span class="icon">🐍</span>
-                    <h3>Yılan 2.0</h3>
-                </div>
+                <div class="game-card" onclick="play('tower')"><i>🏗️</i><h3>Kule Yap</h3></div>
+                <div class="game-card" onclick="play('space')"><i>🚀</i><h3>Uzaydan Kaç</h3></div>
+                <div class="game-card" onclick="play('snake')"><i>🐍</i><h3>Yılan Pro</h3></div>
+                <div class="game-card" onclick="play('guess')"><i>🎰</i><h3>Sayı Bul</h3></div>
             </div>
         </div>
 
-        <div id="wallet" class="screen"><h2>Cüzdanım</h2><p>Puanlarını burada yönetebilirsin.</p></div>
-        <div id="friends" class="screen"><h2>Arkadaşlar</h2><p>Arkadaşlarını davet et, %10 bonus kazan.</p></div>
+        <div id="leader" class="screen"><h2 style="text-align:center">🏆 Liderler Tablosu</h2><p style="text-align:center; color:#666;">Yakında aktif edilecek...</p></div>
 
-        <nav class="nav-bar">
-            <button class="nav-btn active" onclick="switchScreen('home', this)">
-                <span class="icon">🏠</span><span>Ana Sayfa</span>
-            </button>
-            <button class="nav-btn" onclick="switchScreen('wallet', this)">
-                <span class="icon">💰</span><span>Cüzdan</span>
-            </button>
-            <button class="nav-btn" onclick="switchScreen('friends', this)">
-                <span class="icon">👥</span><span>Arkadaşlar</span>
-            </button>
+        <nav class="nav">
+            <button class="nav-item active" onclick="show('home', this)"><span>🏠</span><br>KEŞFET</button>
+            <button class="nav-item" onclick="show('leader', this)"><span>🏆</span><br>LİDERLER</button>
         </nav>
     </div>
 
     <div id="game-stage">
-        <div class="game-ui">
-            <button onclick="closeGame()" style="background:none; border:none; color:white; font-size:24px;">✕</button>
-            <div style="font-size:20px; font-weight:bold;">PUAN: <span id="live-score">0</span></div>
+        <div class="game-nav">
+            <button onclick="exitGame()" style="background:red; color:white; border:none; padding:5px 15px; border-radius:5px;">ÇIK</button>
+            <div style="font-size:20px;">SKOR: <span id="current-score">0</span></div>
             <div></div>
         </div>
-        <canvas id="mainCanvas"></canvas>
-        <div style="text-align:center; padding: 20px; color:var(--text-muted);">Ekrana dokunarak kontrol et!</div>
+        <canvas id="gameCanvas"></canvas>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        tg.enableClosingConfirmation();
+        let totalPuan = parseInt(localStorage.getItem('starzPuan')) || 0;
+        document.getElementById('puan-toplam').innerText = totalPuan;
 
-        let totalBalance = localStorage.getItem('puan') || 0;
-        document.getElementById('total-balance').innerText = totalBalance;
-
-        // Init User
         if (tg.initDataUnsafe?.user) {
-            const user = tg.initDataUnsafe.user;
-            document.getElementById('user-name').innerText = user.first_name;
-            document.getElementById('avatar-init').innerText = user.first_name[0].toUpperCase();
+            document.getElementById('user-info').innerText = tg.initDataUnsafe.user.first_name.toUpperCase();
         }
 
-        // Fake Loading
         setTimeout(() => {
-            document.getElementById('splash').style.opacity = '0';
-            setTimeout(() => {
-                document.getElementById('splash').style.display = 'none';
-                document.getElementById('app').style.display = 'flex';
-            }, 500);
-        }, 2000);
+            document.getElementById('splash').style.display = 'none';
+            document.getElementById('app').style.display = 'flex';
+        }, 3000);
 
-        function switchScreen(screenId, btn) {
+        function show(id, btn) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(screenId).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
             btn.classList.add('active');
             tg.HapticFeedback.impactOccurred('light');
         }
 
-        // --- GAME ENGINE ---
-        const canvas = document.getElementById('mainCanvas');
+        const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        let gameLoop;
-        let currentGame = '';
+        let loop, score = 0, gameActive = false;
 
-        function startTowerGame() {
-            openGameUI();
-            currentGame = 'tower';
-            // Tower Logic (Basit Versiyon)
-            let blocks = [{x: 100, y: 350, w: 100}];
-            let current = {x: 0, y: 320, w: 100, d: 1};
-            let score = 0;
+        function play(game) {
+            document.getElementById('game-stage').style.display = 'flex';
+            canvas.width = window.innerWidth - 40;
+            canvas.height = window.innerHeight * 0.7;
+            score = 0; document.getElementById('current-score').innerText = '0';
+            gameActive = true;
+            if(game === 'tower') runTower();
+            if(game === 'space') runSpace();
+            if(game === 'snake') runSnake();
+            if(game === 'guess') runGuess();
+        }
 
+        // --- GAME MOTORS ---
+        function runTower() {
+            let blocks = [{x: canvas.width/2-50, y: canvas.height-30, w: 100}];
+            let cur = {x: 0, y: canvas.height-60, w: 100, vx: 4};
             function draw() {
-                ctx.fillStyle = '#0b0e11'; ctx.fillRect(0,0,canvas.width,canvas.height);
-                blocks.forEach(b => { ctx.fillStyle = '#7d4cf6'; ctx.fillRect(b.x, b.y, b.w, 30); });
-                ctx.fillStyle = '#fff'; ctx.fillRect(current.x, current.y, current.w, 30);
-                
-                current.x += 4 * current.d;
-                if(current.x + current.w > canvas.width || current.x < 0) current.d *= -1;
-                gameLoop = requestAnimationFrame(draw);
+                if(!gameActive) return;
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                blocks.forEach(b => { ctx.fillStyle='#ffcc00'; ctx.fillRect(b.x, b.y, b.w, 28); });
+                ctx.fillStyle='#fff'; ctx.fillRect(cur.x, cur.y, cur.w, 28);
+                cur.x += cur.vx;
+                if(cur.x + cur.w > canvas.width || cur.x < 0) cur.vx *= -1;
+                loop = requestAnimationFrame(draw);
             }
             draw();
-
             canvas.onclick = () => {
                 let last = blocks[blocks.length-1];
-                if(current.x > last.x + last.w || current.x + current.w < last.x) {
-                    gameOver(score);
-                } else {
-                    score++;
-                    document.getElementById('live-score').innerText = score;
-                    blocks.push({x: current.x, y: current.y, w: current.w});
-                    current.y -= 30;
-                    if(blocks.length > 8) blocks.forEach(b => b.y += 30), current.y += 30;
-                    tg.HapticFeedback.impactOccurred('medium');
+                if(cur.x > last.x + last.w || cur.x + cur.w < last.x) return finish();
+                score++; document.getElementById('current-score').innerText = score;
+                blocks.push({x: cur.x, y: cur.y, w: cur.w});
+                cur.y -= 30; if(blocks.length > 10) blocks.forEach(b => b.y += 30), cur.y += 30;
+                tg.HapticFeedback.impactOccurred('medium');
+            };
+        }
+
+        function runSpace() {
+            let p = {y: canvas.height/2}; let obs = [];
+            function draw() {
+                if(!gameActive) return;
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                ctx.fillStyle='#00ffcc'; ctx.fillRect(40, p.y, 30, 30);
+                if(Math.random() < 0.05) obs.push({x: canvas.width, y: Math.random()*canvas.height, w: 20, h: 40});
+                obs.forEach((o, i) => {
+                    o.x -= 6; ctx.fillStyle='red'; ctx.fillRect(o.x, o.y, o.w, o.h);
+                    if(40 < o.x + o.w && 70 > o.x && p.y < o.y + o.h && p.y + 30 > o.y) finish();
+                });
+                score++; document.getElementById('current-score').innerText = Math.floor(score/10);
+                loop = requestAnimationFrame(draw);
+            }
+            draw();
+            canvas.onclick = () => { p.y -= 60; tg.HapticFeedback.impactOccurred('light'); };
+            setInterval(() => { p.y += 3; }, 30);
+        }
+
+        function runSnake() {
+            let s = [{x:10, y:10}], f = {x:15, y:15}, d = {x:1, y:0};
+            let step = 0;
+            function draw() {
+                if(!gameActive) return;
+                if(++step < 5) { loop = requestAnimationFrame(draw); return; }
+                step = 0;
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                let head = {x: s[0].x + d.x, y: s[0].y + d.y};
+                s.unshift(head);
+                if(head.x === f.x && head.y === f.y) { score += 10; f = {x: Math.floor(Math.random()*20), y: Math.floor(Math.random()*20)}; }
+                else s.pop();
+                if(head.x < 0 || head.y < 0 || head.x > 25 || head.y > 25) return finish();
+                ctx.fillStyle='lime'; s.forEach(p => ctx.fillRect(p.x*15, p.y*15, 14, 14));
+                ctx.fillStyle='red'; ctx.fillRect(f.x*15, f.y*15, 14, 14);
+                document.getElementById('current-score').innerText = score;
+                loop = requestAnimationFrame(draw);
+            }
+            draw();
+            canvas.onclick = (e) => {
+                let rect = canvas.getBoundingClientRect();
+                let x = e.clientX - rect.left;
+                if(x < canvas.width/2) { // Sola dön
+                    let temp = d.x; d.x = d.y; d.y = -temp;
+                } else { // Sağa dön
+                    let temp = d.x; d.x = -d.y; d.y = temp;
                 }
             };
         }
 
-        function startSpaceGame() {
-            openGameUI();
-            currentGame = 'space';
-            let p = {x: 50, y: 200};
-            let obstacles = [];
-            let score = 0;
-            let frame = 0;
-
-            function draw() {
-                ctx.fillStyle = '#0b0e11'; ctx.fillRect(0,0,canvas.width,canvas.height);
-                ctx.fillStyle = '#0088cc'; ctx.fillRect(p.x, p.y, 30, 30); // Player
-
-                if(frame % 60 === 0) obstacles.push({x: canvas.width, y: Math.random()*300, w: 20, h: 50});
-                obstacles.forEach((o, i) => {
-                    o.x -= 5;
-                    ctx.fillStyle = 'red'; ctx.fillRect(o.x, o.y, o.w, o.h);
-                    if(p.x < o.x + o.w && p.x + 30 > o.x && p.y < o.y + o.h && p.y + 30 > o.y) gameOver(score);
-                });
-                frame++; score++;
-                document.getElementById('live-score').innerText = Math.floor(score/10);
-                gameLoop = requestAnimationFrame(draw);
-            }
-            draw();
-            canvas.ontouchstart = () => { p.y -= 50; };
-            canvas.onclick = () => { p.y -= 50; };
-            // Yerçekimi
-            setInterval(() => { p.y += 2; }, 20);
+        function runGuess() {
+            let target = Math.floor(Math.random()*100);
+            ctx.fillStyle='white'; ctx.font='20px Arial'; ctx.fillText('1-100 arası sayı tuttum!', 20, 50);
+            ctx.fillText('Tahmin etmek için ekrana bas!', 20, 100);
+            canvas.onclick = () => {
+                let g = prompt("Tahminin?");
+                if(g == target) { alert("BİLDİN!"); score += 100; finish(); }
+                else if(g < target) alert("DAHA BÜYÜK");
+                else alert("DAHA KÜÇÜK");
+            };
         }
 
-        function openGameUI() {
-            document.getElementById('game-stage').style.display = 'flex';
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight * 0.8;
-            document.getElementById('live-score').innerText = '0';
+        function finish() {
+            gameActive = false;
+            cancelAnimationFrame(loop);
+            tg.HapticFeedback.notificationOccurred('error');
+            alert("OYUN BİTTİ! SKOR: " + score);
+            totalPuan += score;
+            localStorage.setItem('starzPuan', totalPuan);
+            document.getElementById('puan-toplam').innerText = totalPuan;
+            exitGame();
         }
 
-        function gameOver(score) {
-            cancelAnimationFrame(gameLoop);
-            alert("Oyun Bitti! Skor: " + score);
-            totalBalance = parseInt(totalBalance) + score;
-            localStorage.setItem('puan', totalBalance);
-            document.getElementById('total-balance').innerText = totalBalance;
-            closeGame();
-        }
-
-        function closeGame() {
-            cancelAnimationFrame(gameLoop);
+        function exitGame() {
+            gameActive = false;
+            cancelAnimationFrame(loop);
             document.getElementById('game-stage').style.display = 'none';
-            currentGame = '';
         }
     </script>
 </body>
