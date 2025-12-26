@@ -1,5 +1,6 @@
 import os
 import logging
+import asyncio
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, BotCommand
 from telegram.constants import ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
@@ -19,16 +20,6 @@ LINK_APP              = "https://starzmobil.com/indir/"
 LINK_MINI_APP         = "https://telegram-mini-app-umber-chi.vercel.app" 
 # ==============================================================================
 
-# --- ⚙️ BOT MENÜSÜNÜ KURMA (YENİ EKLEME) ---
-async def post_init(application):
-    commands = [
-        BotCommand("start", "🔥 Maceraya ilk adımı at!"),
-        BotCommand("mini_app", "🎰 Starzbet Dünyasına Giriş Yap"),
-        BotCommand("guncel_link", "🔗 Güncel Giriş Adresini Öğren"),
-        BotCommand("canli_destek", "🆘 Bir sorun mu var kanka?"),
-    ]
-    await application.bot.set_my_commands(commands)
-
 # --- 🧠 AKILLI KELİME TAKİBİ (KORUNDU) ---
 async def kelime_takip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text: return
@@ -36,7 +27,7 @@ async def kelime_takip(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     if any(k in msg for k in ["starzbet", "link", "giriş", "adres", "site", "güncel"]):
         text = "🚀 <b>STARZBET GÜNCEL GİRİŞ</b>\n━━━━━━━━━━━━━━━━━━━━\n🔗 " + LINK_GIRIS
-        kb = [[InlineKeyboardButton("🟠 GÜNCEL GİRİŞ ADRESİ", url=LINK_GIRIS)]] # Emojiyi turuncu yaptım
+        kb = [[InlineKeyboardButton("🟠 GÜNCEL GİRİŞ ADRESİ", url=LINK_GIRIS)]]
         await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(kb), parse_mode=ParseMode.HTML)
 
     elif any(k in msg for k in ["maç", "oran", "kupon", "bahis", "tahmin", "özel", "bülten"]):
@@ -53,10 +44,8 @@ async def kelime_takip(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # --- BUTON TIKLAMA YÖNETİMİ ---
 async def buton_tiklama(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
-    try: 
-        await query.answer() 
-    except: 
-        return
+    try: await query.answer() 
+    except: return
 
     if query.data == 'btn_bonus':
         await query.edit_message_caption(caption="🎁 <b>Starzbet Bonus Menüsü</b>\n\nEn yüksek oranlar ve çevrimsiz bonuslar seni bekliyor!", 
@@ -67,7 +56,7 @@ async def buton_tiklama(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await query.delete_message()
         await start(update, context)
 
-# --- START KOMUTU (TURUNCU DOKUNUŞLAR) ---
+# --- START KOMUTU (GÖRSEL VE BUTONLAR) ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     effective_message = update.message if update.message else update.callback_query.message
     
@@ -100,20 +89,40 @@ async def canli_destek(update: Update, context: ContextTypes.DEFAULT_TYPE):
     kb = [[InlineKeyboardButton("🎧 CANLI DESTEĞE BAĞLAN", url=LINK_CANLI_DESTEK)]]
     await update.message.reply_text("🆘 <b>Destek Hattı</b>\nHer türlü sorun için yanındayız kanka!", reply_markup=InlineKeyboardMarkup(kb), parse_mode=ParseMode.HTML)
 
+# --- ANA ÇALIŞTIRICI ---
 if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
     
-    # post_init buraya eklendi ki komutlar Telegram'a kaydolsun
-    app = ApplicationBuilder().token(TOKEN).post_init(post_init).build()
+    application = ApplicationBuilder().token(TOKEN).build()
+
+    # MENÜ KOMUTLARINI KAYDETME (KESİN ÇÖZÜM)
+    async def set_commands():
+        commands = [
+            BotCommand("start", "🔥 Macerayı Başlat"),
+            BotCommand("mini_app", "🎰 Oyunları Aç"),
+            BotCommand("guncel_link", "🔗 Güncel Adres"),
+            BotCommand("canli_destek", "🆘 Yardım Al")
+        ]
+        await application.bot.set_my_commands(commands)
+
+    # Handler'lar
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("mini_app", start))
+    application.add_handler(CommandHandler("guncel_link", guncel_link))
+    application.add_handler(CommandHandler("canli_destek", canli_destek))
+    application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), kelime_takip))
+    application.add_handler(CallbackQueryHandler(buton_tiklama))
+
+    print("🚀 Starzbet Mini Turbo Aktif!")
     
-    # Handler'lar (Start ve Kelime Takibi Korundu)
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("mini_app", start)) # Menüden tıklanırsa
-    app.add_handler(CommandHandler("guncel_link", guncel_link))
-    app.add_handler(CommandHandler("canli_destek", canli_destek))
-    
-    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), kelime_takip))
-    app.add_handler(CallbackQueryHandler(buton_tiklama))
-    
-    print("🚀 Starzbet Mini Turbo Aktif! Menü ve Turuncu Tema Hazır.")
-    app.run_polling()
+    # Komutları asenkron olarak gönderelim
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            asyncio.ensure_future(set_commands())
+        else:
+            loop.run_until_complete(set_commands())
+    except:
+        pass
+
+    application.run_polling()
