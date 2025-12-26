@@ -2,108 +2,218 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Taraftar Oyun Merkezi</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Pro Gaming Hub</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        :root { --main-orange: #ff8c00; --dark-bg: #1a1a1a; }
-        body { background-color: var(--dark-bg); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; text-align: center; }
-        
-        /* Navigasyon / Menü */
-        .header { background: var(--main-orange); padding: 20px; border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        .user-info { font-size: 18px; margin-top: 5px; font-weight: bold; }
+        :root {
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --accent-color: #7d4cf6;
+            --text-main: #ffffff;
+            --text-dim: #8b949e;
+        }
 
-        /* Ana Menü Butonları */
-        .menu-container { padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .game-card { background: #333; padding: 20px; border-radius: 15px; border: 2px solid var(--main-orange); cursor: pointer; transition: 0.3s; }
-        .game-card:active { transform: scale(0.95); }
-        .game-card i { font-size: 40px; display: block; margin-bottom: 10px; }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Inter', -apple-system, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
 
-        /* Oyun Alanları (Gizli Başlar) */
-        .game-screen { display: none; padding: 20px; }
-        .active { display: block; }
+        /* Üst Profil Barı */
+        .header {
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--card-bg);
+            border-bottom: 1px solid #30363d;
+        }
 
-        .btn-back { background: #555; color: white; border: none; padding: 10px 20px; border-radius: 10px; margin-top: 20px; cursor: pointer; }
-        #coin { width: 150px; height: 150px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 70px; margin: 20px auto; border: 5px solid var(--main-orange); }
+        .user-pill {
+            background: #21262d;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            border: 1px solid var(--accent-color);
+        }
+
+        /* Oyun Alanı */
+        #game-container {
+            flex-grow: 1;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            background: radial-gradient(circle at top, #1c2128 0%, #0d1117 100%);
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            max-width: 400px;
+            touch-action: none;
+        }
+
+        /* Alt Menü (Pro Görünüm) */
+        .nav-bar {
+            height: 70px;
+            background: var(--card-bg);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            border-top: 1px solid #30363d;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: var(--text-dim);
+            font-size: 11px;
+            text-decoration: none;
+        }
+
+        .nav-item.active { color: var(--accent-color); }
+
+        .nav-icon { font-size: 20px; margin-bottom: 4px; }
+
+        .score-display {
+            position: absolute;
+            top: 20px;
+            font-size: 40px;
+            font-weight: 900;
+            color: var(--accent-color);
+            text-shadow: 0 0 15px rgba(125, 76, 246, 0.5);
+        }
+
+        #message {
+            position: absolute;
+            bottom: 100px;
+            color: var(--text-dim);
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <div id="welcome-msg">Hoşgeldin Taraftar!</div>
-        <div class="user-info">Puanın: <span id="total-puan">0</span></div>
+        <div id="username" class="user-pill">Oyuncu</div>
+        <div id="balance" style="color: #ecf0f1;">💰 <span id="score-val">0</span></div>
     </div>
 
-    <div id="main-menu" class="menu-container active">
-        <div class="game-card" onclick="openGame('clicker')">
-            <span>⚽</span>
-            <h3>Topa Tıkla</h3>
-        </div>
-        <div class="game-card" onclick="openGame('guess')">
-            <span>🎲</span>
-            <h3>Sayı Tahmini</h3>
-        </div>
-        <div class="game-card" style="opacity: 0.5;">
-            <span>🏆</span>
-            <h3>Yakında...</h3>
-        </div>
+    <div id="game-container">
+        <div class="score-display" id="current-score">0</div>
+        <div id="message">Ekrana Dokun ve Bloğu Bırak!</div>
+        <canvas id="towerCanvas"></canvas>
     </div>
 
-    <div id="game-clicker" class="game-screen">
-        <h2>Topa Vur Puan Kazan!</h2>
-        <div id="coin" onclick="hitCoin()">⚽</div>
-        <button class="btn-back" onclick="showMenu()">Ana Menüye Dön</button>
-    </div>
-
-    <div id="game-guess" class="game-screen">
-        <h2>Sayıyı Tahmin Et (1-10)</h2>
-        <input type="number" id="guess-input" style="padding: 10px; border-radius: 5px; width: 50px;">
-        <button onclick="checkGuess()" style="padding: 10px; background: var(--main-orange); border: none; color: white; border-radius: 5px;">Dene</button>
-        <p id="guess-result"></p>
-        <button class="btn-back" onclick="showMenu()">Ana Menüye Dön</button>
-    </div>
+    <nav class="nav-bar">
+        <a href="#" class="nav-item active"><span class="nav-icon">🎮</span>Oyun</a>
+        <a href="#" class="nav-item"><span class="nav-icon">🏆</span>Liderler</a>
+        <a href="#" class="nav-item"><span class="nav-icon">👥</span>Arkadaşlar</a>
+        <a href="#" class="nav-item"><span class="nav-icon">⚙️</span>Ayarlar</a>
+    </nav>
 
     <script>
-        let totalScore = 0;
         const tg = window.Telegram.WebApp;
         tg.expand();
+        tg.backgroundColor = "#0d1117";
+        tg.headerColor = "#161b22";
 
-        // Telegram'dan kullanıcı adını alalım
-        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-            document.getElementById('welcome-msg').innerText = "Selam, " + tg.initDataUnsafe.user.first_name + "!";
+        if (tg.initDataUnsafe?.user) {
+            document.getElementById('username').innerText = tg.initDataUnsafe.user.first_name;
         }
 
-        function openGame(game) {
-            document.getElementById('main-menu').classList.remove('active');
-            document.getElementById('game-' + game).classList.add('active');
+        // --- BİNA DİKME OYUNU LOGIC ---
+        const canvas = document.getElementById('towerCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth > 400 ? 400 : window.innerWidth;
+        canvas.height = 400;
+
+        let score = 0;
+        let blocks = [];
+        let currentBlock = { x: 0, y: 0, w: 100, h: 30, dir: 1, speed: 3 };
+        let gameState = 'playing';
+
+        function init() {
+            blocks = [{ x: (canvas.width-100)/2, y: canvas.height - 30, w: 100, h: 30 }];
+            newBlock();
+            animate();
         }
 
-        function showMenu() {
-            document.querySelectorAll('.game-screen').forEach(s => s.classList.remove('active'));
-            document.getElementById('main-menu').classList.add('active');
+        function newBlock() {
+            let lastBlock = blocks[blocks.length - 1];
+            currentBlock = {
+                x: 0,
+                y: lastBlock.y - 30,
+                w: lastBlock.w,
+                h: 30,
+                dir: 1,
+                speed: 3 + (blocks.length * 0.2)
+            };
         }
 
-        function hitCoin() {
-            totalScore += 1;
-            updateScore();
-            tg.HapticFeedback.impactOccurred('light');
-        }
+        function animate() {
+            if (gameState !== 'playing') return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        function checkGuess() {
-            const secret = Math.floor(Math.random() * 10) + 1;
-            const userGuess = document.getElementById('guess-input').value;
-            if (userGuess == secret) {
-                totalScore += 50;
-                document.getElementById('guess-result').innerText = "BİLDİN! +50 Puan";
-            } else {
-                document.getElementById('guess-result').innerText = "Olmadı, sayı " + secret + " idi.";
+            // Çizilmiş bloklar
+            blocks.forEach((b, i) => {
+                ctx.fillStyle = i === 0 ? '#30363d' : `hsl(${260 + i*5}, 70%, 60%)`;
+                ctx.fillRect(b.x, b.y, b.w, b.h);
+            });
+
+            // Hareketli blok
+            ctx.fillStyle = '#7d4cf6';
+            ctx.fillRect(currentBlock.x, currentBlock.y, currentBlock.w, currentBlock.h);
+
+            currentBlock.x += currentBlock.speed * currentBlock.dir;
+            if (currentBlock.x + currentBlock.w > canvas.width || currentBlock.x < 0) {
+                currentBlock.dir *= -1;
             }
-            updateScore();
+
+            requestAnimationFrame(animate);
         }
 
-        function updateScore() {
-            document.getElementById('total-puan').innerText = totalScore;
-        }
+        window.addEventListener('touchstart', (e) => {
+            if (gameState !== 'playing') {
+                score = 0;
+                gameState = 'playing';
+                init();
+                return;
+            }
+
+            let lastBlock = blocks[blocks.length - 1];
+            
+            // Üst üste gelme kontrolü
+            if (currentBlock.x > lastBlock.x + lastBlock.w || currentBlock.x + currentBlock.w < lastBlock.x) {
+                gameState = 'over';
+                document.getElementById('message').innerText = "EYVAH! Yıkıldı. Tekrar Dene.";
+                tg.HapticFeedback.notificationOccurred('error');
+            } else {
+                // Bloğu sabitle
+                blocks.push({...currentBlock});
+                score++;
+                document.getElementById('current-score').innerText = score;
+                document.getElementById('score-val').innerText = score * 10;
+                tg.HapticFeedback.impactOccurred('medium');
+                
+                if (blocks.length > 5) {
+                    blocks.forEach(b => b.y += 30);
+                }
+                newBlock();
+            }
+        });
+
+        init();
     </script>
 </body>
 </html>
