@@ -3,108 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Starzbet World</title>
+    <title>Starzbet Elite</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Poppins:wght@300;400;600&display=swap');
-        
-        :root { --gold: #ffcc00; --dark: #080808; --card-bg: #151515; --neon: #00ffcc; --danger: #ff4444; }
-        
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Poppins:wght@300;600&display=swap');
+        :root { --gold: #ffcc00; --dark: #080808; --card: #151515; --neon: #00ffcc; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--dark); color: white; font-family: 'Poppins', sans-serif; margin: 0; overflow: hidden; height: 100vh; }
 
-        /* INTRO SCREEN */
-        #splash {
-            position: fixed; inset: 0; background: radial-gradient(circle, #222 0%, #000 100%);
-            display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10000;
-        }
-        .starz-logo { font-family: 'Orbitron', sans-serif; font-size: 28px; color: var(--gold); text-shadow: 0 0 15px var(--gold); margin-bottom: 20px; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
-
-        /* MAIN WRAPPER */
+        /* SPLASH & APP STRUCTURE */
+        #splash { position: fixed; inset: 0; background: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10000; }
         #app { display: none; height: 100vh; flex-direction: column; }
-        .top-bar { padding: 20px; display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.5); border-bottom: 1px solid #333; }
-        .stat-badge { background: #222; padding: 6px 12px; border-radius: 12px; border: 1px solid var(--gold); font-family: 'Orbitron'; color: var(--gold); font-size: 14px; }
-
-        /* CONTENT */
         .screen { flex-grow: 1; display: none; overflow-y: auto; padding: 20px 20px 100px 20px; }
-        .screen.active { display: block; animation: fadeIn 0.5s ease forwards; }
+        .screen.active { display: block; animation: fadeIn 0.5s ease; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        /* GAMES GRID */
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .card { 
-            background: var(--card-bg); border-radius: 20px; padding: 25px 10px; text-align: center;
-            border: 1px solid #333; transition: 0.3s; cursor: pointer; position: relative;
+        /* PROMOSYON POP-UP */
+        #promo-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.95);
+            z-index: 20000; display: none; flex-direction: column;
+            justify-content: center; align-items: center; padding: 30px;
         }
-        .card:active { transform: translateY(5px); border-color: var(--gold); }
-        .card i { font-size: 40px; display: block; margin-bottom: 10px; }
-        .card span { font-weight: 600; font-size: 13px; color: #ccc; }
+        .promo-card {
+            background: linear-gradient(145deg, #1a1a1a, #000); border: 2px solid var(--gold);
+            border-radius: 25px; padding: 25px; text-align: center; width: 100%; position: relative;
+            box-shadow: 0 0 30px rgba(255, 204, 0, 0.2);
+        }
+        .promo-title { color: var(--gold); font-family: 'Orbitron'; font-size: 18px; margin-bottom: 15px; }
+        .promo-img { width: 80px; height: 80px; margin-bottom: 15px; }
 
-        /* LEADERBOARD */
-        .leader-item { 
-            display: flex; justify-content: space-between; align-items: center; 
-            background: #1a1a1a; padding: 15px; border-radius: 15px; margin-bottom: 10px;
-            border-left: 4px solid var(--gold);
-        }
-        .rank { font-weight: bold; color: var(--gold); width: 30px; }
+        /* HEADER & NAV */
+        .top-bar { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; background: #111; border-bottom: 1px solid #333; }
+        .stat-badge { border: 1px solid var(--gold); padding: 5px 12px; border-radius: 12px; color: var(--gold); font-family: 'Orbitron'; font-size: 13px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .card { background: var(--card); border-radius: 20px; padding: 20px; text-align: center; border: 1px solid #333; }
+        .nav { position: fixed; bottom: 0; width: 100%; height: 75px; background: #111; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #333; padding-bottom: 10px; }
+        .nav-btn { background: none; border: none; color: #666; font-size: 11px; }
+        .nav-btn.active { color: var(--gold); }
 
         /* GAME STAGE */
         #stage { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; flex-direction: column; }
-        .game-header { padding: 15px; display: flex; justify-content: space-between; align-items: center; background: #111; }
-        canvas { display: block; margin: auto; background: #050505; touch-action: none; }
-
-        /* NAV BAR */
-        .nav { 
-            position: fixed; bottom: 0; width: 100%; height: 75px; background: #111;
-            display: flex; justify-content: space-around; align-items: center;
-            border-top: 1px solid #333; padding-bottom: 10px;
-        }
-        .nav-link { background: none; border: none; color: #666; font-size: 11px; cursor: pointer; transition: 0.3s; }
-        .nav-link.active { color: var(--gold); transform: scale(1.1); }
-        .nav-link i { font-size: 22px; display: block; margin-bottom: 3px; }
+        canvas { display: block; margin: auto; background: #050505; }
     </style>
 </head>
 <body>
 
+    <div id="promo-overlay">
+        <div class="promo-card">
+            <div class="promo-title">STARZBET DUYURU</div>
+            <div id="promo-icon" style="font-size: 50px; margin-bottom: 10px;">🎁</div>
+            <p id="promo-text" style="font-weight: 600; font-size: 14px; line-height: 1.5;"></p>
+            <button id="close-promo" disabled style="margin-top:20px; width: 100%; background:#444; color:white; border:none; padding:12px; border-radius:12px; font-weight:bold;">BEKLEYİN (3s)</button>
+        </div>
+    </div>
+
     <div id="splash">
-        <div class="starz-logo">STARZBET</div>
-        <p style="color:#aaa; font-size: 12px; letter-spacing: 2px;">KÜÇÜK DÜNYAYA HOŞGELDİNİZ</p>
+        <div style="font-family:'Orbitron'; color:var(--gold); font-size:30px; margin-bottom:10px;">STARZBET</div>
+        <div style="letter-spacing:3px; font-size:10px; color:#666;">KÜÇÜK DÜNYAYA HOŞGELDİNİZ</div>
     </div>
 
     <div id="app">
         <div class="top-bar">
-            <div id="u-name" style="font-weight: 700; letter-spacing: 1px;">OYUNCU</div>
-            <div class="stat-badge">TOKEN: <span id="total-val">0</span></div>
+            <div id="u-name" style="font-weight:bold; letter-spacing:1px;">OYUNCU</div>
+            <div class="stat-badge">PUAN: <span id="total-val">0</span></div>
         </div>
 
         <div id="home" class="screen active">
-            <h3 style="margin-top:0">🎮 OYUN ODALARI</h3>
+            <div style="background:linear-gradient(45deg, #ffcc00, #aa8800); border-radius:15px; padding:15px; color:black; margin-bottom:20px;">
+                <h4 style="margin:0">⭐ VIP Üyelik Fırsatı</h4>
+                <p style="margin:5px 0; font-size:11px;">Hemen oyna, haftalık çekilişe katıl!</p>
+            </div>
             <div class="grid">
-                <div class="card" onclick="launch('tower')"><i>🏗️</i><span>KULE USTASI</span></div>
-                <div class="card" onclick="launch('space')"><i>🚀</i><span>UZAY YOLCU</span></div>
-                <div class="card" onclick="launch('snake')"><i>🐍</i><span>YILAN KRAL</span></div>
-                <div class="card" onclick="launch('memory')"><i>🧠</i><span>HAFIZA GÜCÜ</span></div>
+                <div class="card" onclick="launch('tower')"><i>🏗️</i><br><span>KULE</span></div>
+                <div class="card" onclick="launch('space')"><i>🚀</i><br><span>UZAY</span></div>
+                <div class="card" onclick="launch('snake')"><i>🐍</i><br><span>YILAN</span></div>
+                <div class="card" onclick="launch('memory')"><i>🧠</i><br><span>HAFIZA</span></div>
             </div>
         </div>
 
         <div id="ranks" class="screen">
-            <h3>🏆 GÜNLÜK SIRALAMA</h3>
-            <p style="font-size:10px; color:var(--danger)">Gece 00:00'da sıfırlanır.</p>
-            <div id="leader-list">
-                </div>
+            <h3>🏆 GÜNLÜK LİDERLER</h3>
+            <div id="leader-list"></div>
         </div>
 
         <nav class="nav">
-            <button class="nav-link active" onclick="tab('home', this)"><i>🏠</i>KEŞFET</button>
-            <button class="nav-link" onclick="tab('ranks', this)"><i>🏆</i>SKORLAR</button>
+            <button class="nav-btn active" onclick="tab('home', this)"><i>🏠</i><br>KEŞFET</button>
+            <button class="nav-btn" onclick="tab('ranks', this)"><i>🏆</i><br>SIRALAMA</button>
         </nav>
     </div>
 
     <div id="stage">
-        <div class="game-header">
-            <button onclick="quitGame()" style="background:var(--danger); color:white; border:none; padding:8px 15px; border-radius:8px;">KAPAT</button>
+        <div style="padding:15px; display:flex; justify-content:space-between; align-items:center; background:#111;">
+            <button onclick="quitGame()" style="background:#ff4444; color:white; border:none; padding:8px 12px; border-radius:8px;">KAPAT</button>
             <div style="font-family:'Orbitron'; font-size:18px;">SKOR: <span id="live-p">0</span></div>
+            <div></div>
         </div>
         <canvas id="cvs"></canvas>
     </div>
@@ -112,32 +104,53 @@
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-
         let balance = parseInt(localStorage.getItem('sz_bal')) || 0;
-        let userName = tg.initDataUnsafe?.user?.first_name || "MİSAFİR";
+        let gamesPlayed = 0;
         document.getElementById('total-val').innerText = balance;
-        document.getElementById('u-name').innerText = userName.toUpperCase();
+        document.getElementById('u-name').innerText = (tg.initDataUnsafe?.user?.first_name || "MİSAFİR").toUpperCase();
 
-        // 00:00 SIFIRLAMA KONTROLÜ
-        function checkReset() {
-            const lastReset = localStorage.getItem('sz_reset_date');
-            const today = new Date().toLocaleDateString();
-            if (lastReset !== today) {
-                localStorage.setItem('sz_leaderboard', JSON.stringify([]));
-                localStorage.setItem('sz_reset_date', today);
+        const promos = [
+            { t: "%100 Hoşgeldin Bonusu Starzbet'te sizi bekliyor!", i: "💰" },
+            { t: "Her gün 00:00'da liderlik tablosu sıfırlanır, ödüller dağıtılır!", i: "🏆" },
+            { t: "Arkadaşını davet et, kaybettiğinde %10 iade kazan!", i: "👥" },
+            { t: "Starzbet güncel giriş adresi için Telegram kanalımızı takip edin!", i: "🔗" }
+        ];
+
+        function checkPromo() {
+            gamesPlayed++;
+            if (gamesPlayed % 2 === 0) {
+                const overlay = document.getElementById('promo-overlay');
+                const btn = document.getElementById('close-promo');
+                const text = document.getElementById('promo-text');
+                const icon = document.getElementById('promo-icon');
+                
+                const rand = promos[Math.floor(Math.random() * promos.length)];
+                text.innerText = rand.t;
+                icon.innerText = rand.i;
+                overlay.style.display = 'flex';
+                
+                let time = 3;
+                btn.disabled = true; btn.style.background = "#444";
+                let inter = setInterval(() => {
+                    time--;
+                    btn.innerText = `BEKLEYİN (${time}s)`;
+                    if(time <= 0) {
+                        clearInterval(inter);
+                        btn.disabled = false;
+                        btn.style.background = "var(--gold)";
+                        btn.style.color = "black";
+                        btn.innerText = "DEVAM ET";
+                    }
+                }, 1000);
+                btn.onclick = () => { overlay.style.display = 'none'; };
             }
         }
-        checkReset();
 
-        // SPLASH GİDİŞ
-        setTimeout(() => {
-            document.getElementById('splash').style.display = 'none';
-            document.getElementById('app').style.display = 'flex';
-        }, 2500);
+        setTimeout(() => { document.getElementById('splash').style.display='none'; document.getElementById('app').style.display='flex'; }, 2000);
 
         function tab(id, el) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             document.getElementById(id).classList.add('active');
             el.classList.add('active');
             if(id === 'ranks') loadLeaders();
@@ -148,27 +161,24 @@
         const ctx = cvs.getContext('2d');
         let loop, score = 0, active = false;
 
-        function launch(game) {
+        function launch(g) {
             document.getElementById('stage').style.display = 'flex';
-            cvs.width = window.innerWidth;
-            cvs.height = window.innerHeight * 0.8;
-            score = 0; document.getElementById('live-p').innerText = '0';
-            active = true;
-            if(game === 'tower') towerLoop();
-            if(game === 'space') spaceLoop();
-            if(game === 'snake') snakeLoop();
-            if(game === 'memory') memoryLoop();
+            cvs.width = window.innerWidth; cvs.height = window.innerHeight * 0.8;
+            score = 0; active = true;
+            if(g==='tower') runTower();
+            if(g==='space') runSpace();
+            if(g==='snake') runSnake();
+            if(g==='memory') runMemory();
         }
 
-        // --- OYUN 1: KULE ---
-        function towerLoop() {
+        function runTower() {
             let b = [{x: cvs.width/2-50, y: cvs.height-40, w: 100}];
             let c = {x: 0, y: cvs.height-80, w: 100, v: 5};
             function run() {
                 if(!active) return;
                 ctx.clearRect(0,0,cvs.width,cvs.height);
-                b.forEach(i => { ctx.fillStyle=i.y===cvs.height-40?'#333':(score%2?'#ffcc00':'#fff'); ctx.fillRect(i.x, i.y, i.w, 38); });
-                ctx.fillStyle='#00ffcc'; ctx.fillRect(c.x, c.y, c.w, 38);
+                b.forEach(i => { ctx.fillStyle=i.y===cvs.height-40?'#333':'#ffcc00'; ctx.fillRect(i.x, i.y, i.w, 38); });
+                ctx.fillStyle='#fff'; ctx.fillRect(c.x, c.y, c.w, 38);
                 c.x += c.v; if(c.x+c.w > cvs.width || c.x < 0) c.v *= -1;
                 loop = requestAnimationFrame(run);
             }
@@ -178,20 +188,19 @@
                 if(c.x > prev.x + prev.w || c.x + c.w < prev.x) return end();
                 score++; document.getElementById('live-p').innerText = score;
                 b.push({x: c.x, y: c.y, w: c.w});
-                c.y -= 40; if(b.length > 10) b.forEach(i => i.y += 40), c.y += 40;
+                c.y -= 40; if(b.length > 8) b.forEach(i => i.y += 40), c.y += 40;
                 tg.HapticFeedback.impactOccurred('medium');
             };
         }
 
-        // --- OYUN 2: UZAY ---
-        function spaceLoop() {
+        function runSpace() {
             let y = 200, v = 0, obs = [];
             function run() {
                 if(!active) return; ctx.clearRect(0,0,cvs.width,cvs.height);
-                v += 0.25; y += v; ctx.fillStyle='#00ffcc'; ctx.fillRect(50, y, 30, 30);
-                if(Math.random()<0.03) obs.push({x:cvs.width, y:Math.random()*cvs.height, w:30, h:100});
+                v += 0.3; y += v; ctx.fillStyle='#00ffcc'; ctx.fillRect(50, y, 30, 30);
+                if(Math.random()<0.04) obs.push({x:cvs.width, y:Math.random()*cvs.height, w:30, h:80});
                 obs.forEach(o => { 
-                    o.x -= 5; ctx.fillStyle='red'; ctx.fillRect(o.x, o.y, o.w, o.h);
+                    o.x -= 6; ctx.fillStyle='#ff4444'; ctx.fillRect(o.x, o.y, o.w, o.h);
                     if(50 < o.x + o.w && 80 > o.x && y < o.y + o.h && y + 30 > o.y) end();
                 });
                 if(y > cvs.height || y < 0) end();
@@ -202,57 +211,50 @@
             cvs.onclick = () => { v = -6; tg.HapticFeedback.impactOccurred('light'); };
         }
 
-        // --- OYUN 3: YILAN ---
-        function snakeLoop() {
-            let s = [{x:10,y:10}], f = {x:5,y:5}, d = {x:1,y:0}, tick = 0;
+        function runSnake() {
+            let s = [{x:10,y:10}], f = {x:5,y:5}, d = {x:1,y:0}, t = 0;
             function run() {
-                if(!active) return;
-                if(++tick < 8) { loop = requestAnimationFrame(run); return; }
-                tick = 0; ctx.clearRect(0,0,cvs.width,cvs.height);
+                if(!active) return; if(++t < 8) { loop = requestAnimationFrame(run); return; } t = 0;
+                ctx.clearRect(0,0,cvs.width,cvs.height);
                 let n = {x: s[0].x+d.x, y: s[0].y+d.y};
-                if(n.x==f.x && n.y==f.y) { score+=10; f={x:Math.floor(Math.random()*15), y:Math.floor(Math.random()*20)}; }
-                else s.pop();
+                if(n.x==f.x && n.y==f.y) { score+=10; f={x:Math.floor(Math.random()*15),y:Math.floor(Math.random()*20)}; } else s.pop();
                 if(n.x<0||n.y<0||n.x>19||n.y>25||s.some(p=>p.x==n.x&&p.y==n.y)) return end();
                 s.unshift(n); document.getElementById('live-p').innerText = score;
-                ctx.fillStyle='lime'; s.forEach(p=>ctx.fillRect(p.x*20, p.y*20, 18, 18));
-                ctx.fillStyle='red'; ctx.fillRect(f.x*20, f.y*20, 18, 18);
+                ctx.fillStyle='#00ffcc'; s.forEach(p=>ctx.fillRect(p.x*20, p.y*20, 18, 18));
+                ctx.fillStyle='#ff4444'; ctx.fillRect(f.x*20, f.y*20, 18, 18);
                 loop = requestAnimationFrame(run);
             }
             run();
-            cvs.onclick = (e) => { 
-                let t = d.x; d.x = -d.y; d.y = t; tg.HapticFeedback.impactOccurred('light'); 
-            };
+            cvs.onclick = (e) => { let x = d.x; d.x = -d.y; d.y = x; tg.HapticFeedback.impactOccurred('light'); };
         }
 
-        // --- OYUN 4: HAFIZA ---
-        function memoryLoop() {
-            let cards = ['🍎','🍎','💎','💎','⚽','⚽','🚗','🚗','⭐','⭐','🔥','🔥'];
+        function runMemory() {
+            let cards = ['🍒','🍒','🍋','🍋','🔔','🔔','💎','💎','7️⃣','7️⃣','🍉','🍉'];
             cards.sort(() => Math.random() - 0.5);
-            let flipped = [], solved = 0;
-            function drawUI() {
+            let flip = [], done = 0;
+            function draw() {
                 ctx.clearRect(0,0,cvs.width,cvs.height);
-                ctx.font = "30px Arial";
                 cards.forEach((c, i) => {
                     let x = (i%3)*100+40, y = Math.floor(i/3)*100+40;
-                    ctx.fillStyle = '#222'; ctx.fillRect(x,y,80,80);
-                    if(flipped.includes(i) || c === 'OK') ctx.fillText(c === 'OK' ? '✔️' : c, x+25, y+50);
+                    ctx.fillStyle = '#1a1a1a'; ctx.fillRect(x,y,80,80);
+                    if(flip.includes(i) || c === 'V') {
+                        ctx.font = "30px Arial";
+                        ctx.fillText(c === 'V' ? '⭐' : c, x+25, y+50);
+                    }
                 });
-                if(solved === 6) { score = 500; end(); }
-                loop = requestAnimationFrame(drawUI);
+                if(done === 6) { score = 300; end(); }
+                loop = requestAnimationFrame(draw);
             }
-            drawUI();
+            draw();
             cvs.onclick = (e) => {
                 let rect = cvs.getBoundingClientRect(), mx = e.clientX-rect.left, my = e.clientY-rect.top;
                 cards.forEach((c, i) => {
                     let x = (i%3)*100+40, y = Math.floor(i/3)*100+40;
-                    if(mx > x && mx < x+80 && my > y && my < y+80 && cards[i] !== 'OK' && flipped.length < 2) {
-                        flipped.push(i);
-                        if(flipped.length === 2) {
-                            if(cards[flipped[0]] === cards[flipped[1]]) {
-                                setTimeout(() => { cards[flipped[0]] = cards[flipped[1]] = 'OK'; solved++; flipped = []; }, 500);
-                            } else {
-                                setTimeout(() => { flipped = []; }, 800);
-                            }
+                    if(mx>x && mx<x+80 && my>y && my<y+80 && cards[i]!=='V' && flip.length<2) {
+                        flip.push(i);
+                        if(flip.length===2) {
+                            if(cards[flip[0]]===cards[flip[1]]) { setTimeout(()=>{ cards[flip[0]]=cards[flip[1]]='V'; done++; flip=[]; }, 300); }
+                            else { setTimeout(()=>{ flip=[]; }, 500); }
                         }
                     }
                 });
@@ -261,34 +263,33 @@
 
         function end() {
             active = false; cancelAnimationFrame(loop);
-            tg.HapticFeedback.notificationOccurred('warning');
-            saveScore(userName, score);
             balance += score; localStorage.setItem('sz_bal', balance);
             document.getElementById('total-val').innerText = balance;
-            alert("OYUN BİTTİ! SKORUN: " + score);
+            save(score);
+            alert("SKOR: " + score);
             quitGame();
+            checkPromo();
         }
 
-        function saveScore(name, scr) {
-            let list = JSON.parse(localStorage.getItem('sz_leaderboard')) || [];
-            list.push({name: name, score: scr, date: new Date().getTime()});
-            list.sort((a,b) => b.score - a.score);
-            localStorage.setItem('sz_leaderboard', JSON.stringify(list.slice(0, 10)));
+        function save(s) {
+            let l = JSON.parse(localStorage.getItem('sz_ranks')) || [];
+            l.push({n: (tg.initDataUnsafe?.user?.first_name || "OYUNCU"), s: s});
+            l.sort((a,b)=>b.s-a.s);
+            localStorage.setItem('sz_ranks', JSON.stringify(l.slice(0, 10)));
         }
 
         function loadLeaders() {
-            const list = JSON.parse(localStorage.getItem('sz_leaderboard')) || [];
-            const container = document.getElementById('leader-list');
-            container.innerHTML = list.length === 0 ? "<p style='text-align:center'>Henüz skor yok!</p>" : "";
-            list.forEach((item, i) => {
-                container.innerHTML += `<div class="leader-item"><div class="rank">#${i+1}</div><div>${item.name}</div><div style="color:var(--neon)">${item.score}</div></div>`;
+            let l = JSON.parse(localStorage.getItem('sz_ranks')) || [];
+            const c = document.getElementById('leader-list');
+            c.innerHTML = l.length === 0 ? "<p>Henüz kimse oynamadı!</p>" : "";
+            l.forEach((x, i) => {
+                c.innerHTML += `<div style="background:#1a1a1a; padding:15px; border-radius:15px; margin-bottom:10px; display:flex; justify-content:space-between;">
+                    <span>#${i+1} ${x.n}</span><span style="color:var(--gold)">${x.s}</span>
+                </div>`;
             });
         }
 
-        function quitGame() {
-            active = false; cancelAnimationFrame(loop);
-            document.getElementById('stage').style.display = 'none';
-        }
+        function quitGame() { active=false; cancelAnimationFrame(loop); document.getElementById('stage').style.display='none'; }
     </script>
 </body>
 </html>
