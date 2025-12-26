@@ -11,36 +11,29 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
         body { background: var(--dark); color: white; font-family: 'Poppins', sans-serif; margin: 0; overflow: hidden; height: 100vh; width: 100%; position: fixed; }
 
-        /* AÇILIŞ ANİMASYONU (SPLASH) */
         #splash { position: fixed; inset: 0; background: #000; z-index: 30000; display: flex; justify-content: center; align-items: center; animation: fadeOut 0.8s ease 2.5s forwards; }
         .splash-logo { font-family: 'Orbitron'; font-size: 32px; color: var(--gold); text-shadow: 0 0 20px var(--gold); animation: neonPulse 1.2s infinite alternate; }
         @keyframes neonPulse { from { opacity: 0.4; transform: scale(0.9); } to { opacity: 1; transform: scale(1.1); } }
         @keyframes fadeOut { to { opacity: 0; visibility: hidden; } }
 
-        /* ANA YAPI */
         #app { height: 100vh; display: flex; flex-direction: column; opacity: 0; animation: fadeIn 0.5s ease 3s forwards; }
         @keyframes fadeIn { to { opacity: 1; } }
 
-        /* ÜST BAR */
         .top-bar { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; background: #000; border-bottom: 1px solid #222; }
         .stat-badge { border: 1px solid var(--gold); padding: 5px 12px; border-radius: 20px; color: var(--gold); font-family: 'Orbitron'; font-size: 11px; }
         
-        /* EKRANLAR */
-        .screen { flex-grow: 1; display: none; overflow-y: auto; padding: 20px 20px 100px 20px; }
+        .screen { flex-grow: 1; display: none; overflow-y: auto; padding: 20px; }
         .screen.active { display: block; }
 
-        /* KARTLAR (MENÜ) */
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .card { background: #111; border-radius: 20px; padding: 25px; text-align: center; border: 1px solid #222; transition: 0.3s; }
+        .card { background: #111; border-radius: 20px; padding: 25px; text-align: center; border: 1px solid #222; }
         .card:active { transform: scale(0.92); border-color: var(--gold); }
         .card i { font-size: 40px; display: block; margin-bottom: 10px; }
 
-        /* ALT NAVİGASYON */
         .nav { position: fixed; bottom: 0; width: 100%; height: 75px; background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #222; padding-bottom: 10px; }
         .nav-btn { background: none; border: none; color: #555; font-size: 11px; text-align: center; }
         .nav-btn.active { color: var(--gold); }
 
-        /* OYUN SAHASI */
         #stage { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; flex-direction: column; }
         .canvas-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; }
         canvas { background: #000; border: 1px solid #222; }
@@ -66,7 +59,7 @@
         </div>
 
         <div id="ranks" class="screen">
-            <h3 style="color:var(--gold); font-family:'Orbitron'; text-align:center;">🏆 LİDERLİK TABLOSU</h3>
+            <h3 style="color:var(--gold); font-family:'Orbitron'; text-align:center;">🏆 LİDERLER</h3>
             <div id="leader-list"></div>
         </div>
 
@@ -77,8 +70,8 @@
     </div>
 
     <div id="stage">
-        <div style="padding:15px; display:flex; justify-content:space-between; align-items:center; background:#000; border-bottom:1px solid #222;">
-            <button onclick="quitGame()" style="background:#ff3333; color:white; border:none; padding:8px 15px; border-radius:10px; font-weight:bold;">KAPAT</button>
+        <div style="padding:15px; display:flex; justify-content:space-between; align-items:center; background:#000;">
+            <button onclick="quitGame()" style="background:#ff3333; color:white; border:none; padding:8px 15px; border-radius:10px;">KAPAT</button>
             <div id="game-ui" style="font-family:'Orbitron'; color:var(--gold); font-size:18px;">0</div>
         </div>
         <div class="canvas-container"><canvas id="cvs"></canvas></div>
@@ -87,78 +80,40 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-        const firebaseConfig = { 
-            apiKey: "AIzaSyB4JIv0kny1PG_d2bsbGXxt0eQbxrzHWo4", 
-            authDomain: "starzbet-score.firebaseapp.com", 
-            projectId: "starzbet-score", 
-            storageBucket: "starzbet-score.firebasestorage.app", 
-            messagingSenderId: "100283892830", 
-            appId: "1:100283892830:web:d970d37961616762ef60cf" 
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        // Skoru Firebase'e Gönder
-        window.saveGlobal = async (s) => {
-            try {
-                const name = (window.Telegram.WebApp.initDataUnsafe?.user?.first_name || "MERT").toUpperCase();
-                await addDoc(collection(db, "scores"), { name, points: s, timestamp: serverTimestamp() });
-            } catch(e) { console.error("Firebase Hatası:", e); }
-        };
-
-        // Liderleri Firebase'den Çek
+        const firebaseConfig = { apiKey: "AIzaSyB4JIv0kny1PG_d2bsbGXxt0eQbxrzHWo4", authDomain: "starzbet-score.firebaseapp.com", projectId: "starzbet-score", storageBucket: "starzbet-score.firebasestorage.app", messagingSenderId: "100283892830", appId: "1:100283892830:web:d970d37961616762ef60cf" };
+        const app = initializeApp(firebaseConfig); const db = getFirestore(app);
+        window.saveGlobal = async (s) => { try { await addDoc(collection(db, "scores"), { name: (window.Telegram.WebApp.initDataUnsafe?.user?.first_name || "MERT").toUpperCase(), points: s, timestamp: serverTimestamp() }); } catch(e){} };
         window.loadLeaders = async () => {
             const list = document.getElementById('leader-list');
-            list.innerHTML = "<p style='text-align:center; color:#555;'>Yükleniyor...</p>";
-            try {
-                const q = query(collection(db, "scores"), orderBy("points", "desc"), limit(10));
-                const snap = await getDocs(q);
-                list.innerHTML = "";
-                if(snap.empty) { list.innerHTML = "<p style='text-align:center;'>Henüz skor yok.</p>"; return; }
-                let i = 1;
-                snap.forEach(doc => {
-                    const d = doc.data();
-                    list.innerHTML += `<div style="background:#111; padding:15px; border-radius:15px; margin-bottom:10px; display:flex; justify-content:space-between; border:1px solid #222; border-left:4px solid var(--gold);">
-                        <span>#${i} ${d.name}</span><span style="color:var(--gold); font-family:'Orbitron';">${d.points}</span>
-                    </div>`;
-                    i++;
-                });
-            } catch(e) { list.innerHTML = "<p style='color:red;'>Bağlantı hatası.</p>"; }
+            list.innerHTML = "<p style='text-align:center;'>Yükleniyor...</p>";
+            const q = query(collection(db, "scores"), orderBy("points", "desc"), limit(10));
+            const snap = await getDocs(q); list.innerHTML = "";
+            snap.forEach((doc, i) => { const d = doc.data(); list.innerHTML += `<div style="background:#111; padding:12px; border-radius:12px; margin-bottom:10px; display:flex; justify-content:space-between; border-left:4px solid var(--gold);"><span>#${i+1} ${d.name}</span><span>${d.points}</span></div>`; });
         };
     </script>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        const uName = (tg.initDataUnsafe?.user?.first_name || "MERT").toUpperCase();
-        document.getElementById('u-name').innerText = uName;
+        document.getElementById('u-name').innerText = (tg.initDataUnsafe?.user?.first_name || "MERT").toUpperCase();
 
-        // --- TAB KONTROLÜ ---
-        function tab(screenId) {
+        function tab(id) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(screenId).classList.add('active');
-            if(screenId === 'home') document.getElementById('btn-home').classList.add('active');
-            if(screenId === 'ranks') {
-                document.getElementById('btn-ranks').classList.add('active');
-                if(window.loadLeaders) window.loadLeaders();
-            }
-            tg.HapticFeedback.impactOccurred('light');
+            document.getElementById(id).classList.add('active');
+            if(id==='home') document.getElementById('btn-home').classList.add('active');
+            else { document.getElementById('btn-ranks').classList.add('active'); window.loadLeaders(); }
         }
 
-        // --- OYUN AYARLARI ---
         let loop, score = 0, active = false;
         const cvs = document.getElementById('cvs');
         const ctx = cvs.getContext('2d');
 
         function launch(g) {
             document.getElementById('stage').style.display = 'flex';
-            cvs.width = Math.min(window.innerWidth - 30, 400);
+            cvs.width = Math.min(window.innerWidth - 40, 320);
             cvs.height = window.innerHeight - 150;
             score = 0; active = true;
-            document.getElementById('game-ui').innerText = "0";
             if(g==='tower') runTower();
             if(g==='snake') runSnake();
             if(g==='memory') runMemory();
@@ -168,56 +123,119 @@
         // --- 🏗️ KULE OYUNU ---
         function runTower() {
             let bw = cvs.width * 0.4, blocks = [{x: cvs.width/2 - bw/2, y: cvs.height-40, w: bw}];
-            let cur = {x: 0, y: cvs.height-80, w: bw, v: 3.5}, camY = 0;
+            let cur = {x: 0, y: cvs.height-80, w: bw, v: 4}, camY = 0;
             function run() {
                 if(!active) return; ctx.clearRect(0,0,cvs.width,cvs.height);
                 ctx.save(); ctx.translate(0, camY);
-                blocks.forEach((b, i) => { ctx.fillStyle = i%2==0?'#ffcc00':'#aa8800'; ctx.fillRect(b.x, b.y, b.w, 38); });
-                ctx.fillStyle = '#fff'; ctx.fillRect(cur.x, cur.y, cur.w, 38); ctx.restore();
+                blocks.forEach((b,i)=> { ctx.fillStyle=i%2==0?'#ffcc00':'#aa8800'; ctx.fillRect(b.x,b.y,b.w,38); });
+                ctx.fillStyle='#fff'; ctx.fillRect(cur.x,cur.y,cur.w,38); ctx.restore();
                 cur.x += cur.v; if(cur.x+cur.w > cvs.width || cur.x < 0) cur.v *= -1;
                 loop = requestAnimationFrame(run);
             }
             run();
             cvs.onclick = () => {
-                let prev = blocks[blocks.length-1];
-                let diff = cur.x - prev.x;
-                if(Math.abs(diff) >= cur.w) return end();
-                cur.w -= Math.abs(diff); if(diff < 0) cur.x = prev.x;
+                let p = blocks[blocks.length-1]; let d = cur.x - p.x;
+                if(Math.abs(d) >= cur.w) return end();
+                cur.w -= Math.abs(d); if(d<0) cur.x = p.x;
                 score++; document.getElementById('game-ui').innerText = score;
                 blocks.push({x: cur.x, y: cur.y, w: cur.w});
                 cur.y -= 40; if(blocks.length > 5) camY += 40;
-                cur.v = (Math.abs(cur.v) + 0.2) * (cur.v > 0 ? 1 : -1);
-                tg.HapticFeedback.impactOccurred('medium');
+                cur.v += (cur.v > 0 ? 0.3 : -0.3);
             };
         }
 
-        // --- 🐍 NEON YILAN (HIZLANAN & YUMUŞAK) ---
+        // --- 🐍 NEON SNAKE ---
         function runSnake() {
-            let sz = 20, s = [{x:10,y:10}], f = {x:5,y:5}, d = {x:1,y:0}, nD = {x:1,y:0}, spd = 160;
+            let sz = 16, s = [{x:10,y:10}], f = {x:5,y:5}, d = {x:1,y:0}, nD = {x:1,y:0}, spd = 150;
             function move() {
                 if(!active) return; d = nD;
                 let head = {x: s[0].x+d.x, y: s[0].y+d.y};
-                const maxW = Math.floor(cvs.width/sz), maxH = Math.floor(cvs.height/sz);
-                if(head.x<0||head.x>=maxW||head.y<0||head.y>=maxH||s.some(p=>p.x==head.x&&p.y==head.y)) return end();
-                if(head.x==f.x && head.y==f.y) { 
-                    score+=50; spd = Math.max(50, spd-4); 
-                    f={x:Math.floor(Math.random()*(maxW-1)), y:Math.floor(Math.random()*(maxH-1))}; 
-                } else s.pop();
-                s.unshift(head); 
-                ctx.clearRect(0,0,cvs.width,cvs.height);
+                if(head.x<0||head.x>=Math.floor(cvs.width/sz)||head.y<0||head.y>=Math.floor(cvs.height/sz)||s.some(p=>p.x==head.x&&p.y==head.y)) return end();
+                if(head.x==f.x && head.y==f.y) { score+=50; spd=Math.max(50,spd-5); f={x:Math.floor(Math.random()*(cvs.width/sz-1)), y:Math.floor(Math.random()*(cvs.height/sz-1))}; } else s.pop();
+                s.unshift(head); ctx.clearRect(0,0,cvs.width,cvs.height);
+                ctx.fillStyle='#ff3333'; ctx.beginPath(); ctx.arc(f.x*sz+sz/2, f.y*sz+sz/2, 7, 0, 7); ctx.fill();
+                s.forEach((p,i)=> { ctx.fillStyle=i==0?'#00f2ff':'rgba(0,242,255,0.4)'; ctx.beginPath(); ctx.roundRect(p.x*sz,p.y*sz,sz-2,sz-2,5); ctx.fill(); });
                 document.getElementById('game-ui').innerText = score;
-                ctx.fillStyle = '#ff3333'; ctx.beginPath(); ctx.arc(f.x*sz+sz/2, f.y*sz+sz/2, 8, 0, 7); ctx.fill();
-                s.forEach((p, i) => {
-                    ctx.fillStyle = i==0?'#00f2ff':'rgba(0, 242, 255, 0.4)';
-                    ctx.beginPath(); ctx.roundRect(p.x*sz, p.y*sz, sz-2, sz-2, 6); ctx.fill();
-                });
                 setTimeout(move, spd);
             }
             move();
             cvs.onclick = () => { let x = nD.x; nD.x = -nD.y; nD.y = x; };
         }
 
-        // --- 🎰 KART OYUNU ---
+        // --- 🧩 REAL TETRIS ---
+        function runTetris() {
+            const sz = 20, col = Math.floor(cvs.width/sz), row = Math.floor(cvs.height/sz);
+            const shapes = [
+                { s: [[1,1,1,1]], c: '#00f2ff' }, // I
+                { s: [[1,1],[1,1]], c: '#ffcc00' }, // O
+                { s: [[0,1,0],[1,1,1]], c: '#a020f0' }, // T
+                { s: [[1,0,0],[1,1,1]], c: '#ffa500' }, // L
+                { s: [[0,0,1],[1,1,1]], c: '#0000ff' }, // J
+                { s: [[0,1,1],[1,1,0]], c: '#00ff00' }, // S
+                { s: [[1,1,0],[0,1,1]], c: '#ff0000' }  // Z
+            ];
+            let board = Array(row).fill().map(()=>Array(col).fill(0));
+            let cur, pos, dropCounter = 0, dropInterval = 800;
+
+            function resetPiece() {
+                const r = shapes[Math.floor(Math.random()*shapes.length)];
+                cur = r.s; pos = { x: Math.floor(col/2) - 1, y: 0 };
+                if (collide()) return end();
+            }
+
+            function collide() {
+                for(let y=0; y<cur.length; y++) {
+                    for(let x=0; x<cur[y].length; x++) {
+                        if(cur[y][x] && (board[pos.y+y] === undefined || board[pos.y+y][pos.x+x] === undefined || board[pos.y+y][pos.x+x])) return true;
+                    }
+                }
+                return false;
+            }
+
+            function merge() {
+                cur.forEach((r,y)=>r.forEach((v,x)=>{ if(v) board[pos.y+y][pos.x+x] = shapes.find(s=>JSON.stringify(s.s)===JSON.stringify(cur))?.c || '#fff'; }));
+            }
+
+            function rotate(matrix) {
+                const rotated = matrix[0].map((_, i) => matrix.map(row => row[i]).reverse());
+                const prev = cur; cur = rotated;
+                if(collide()) cur = prev;
+            }
+
+            function sweep() {
+                outer: for(let y=row-1; y>=0; y--) {
+                    for(let x=0; x<col; x++) if(!board[y][x]) continue outer;
+                    const r = board.splice(y,1)[0].fill(0);
+                    board.unshift(r); score += 100; y++;
+                    dropInterval = Math.max(100, dropInterval - 20);
+                }
+            }
+
+            function update(time = 0) {
+                if(!active) return;
+                dropCounter += 16;
+                if(dropCounter > dropInterval) {
+                    pos.y++; if(collide()) { pos.y--; merge(); sweep(); resetPiece(); }
+                    dropCounter = 0;
+                }
+                ctx.clearRect(0,0,cvs.width,cvs.height);
+                board.forEach((r,y)=>r.forEach((v,x)=>{ if(v){ctx.fillStyle=v; ctx.fillRect(x*sz,y*sz,sz-1,sz-1);} }));
+                cur.forEach((r,y)=>r.forEach((v,x)=>{ if(v){ctx.fillStyle='#fff'; ctx.fillRect((pos.x+x)*sz, (pos.y+y)*sz, sz-1, sz-1);} }));
+                document.getElementById('game-ui').innerText = score;
+                loop = requestAnimationFrame(update);
+            }
+
+            resetPiece(); update();
+            cvs.onclick = (e) => {
+                const rect = cvs.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                if(x < cvs.width/3) { pos.x--; if(collide()) pos.x++; }
+                else if(x > (cvs.width/3)*2) { pos.x++; if(collide()) pos.x--; }
+                else rotate(cur);
+            };
+        }
+
+        // --- 🎰 CASINO MEMORY ---
         function runMemory() {
             let icons = ['🎰','🎲','💎','🃏','7️⃣','💰'], cards = [...icons, ...icons].sort(()=>Math.random()-0.5).map(v=>({v, s:0})), flip = [], done = 0;
             function run() {
@@ -226,10 +244,7 @@
                     let cw = (cvs.width-60)/3, ch = (cvs.height-120)/4, x = (i%3)*(cw+10)+15, y = Math.floor(i/3)*(ch+10)+20;
                     ctx.fillStyle = (c.s==1||c.v=='V') ? '#111':'#ffcc00'; 
                     ctx.beginPath(); ctx.roundRect(x,y,cw,ch,10); ctx.fill();
-                    if(c.s==1||c.v=='V') {
-                        ctx.font="30px Arial"; ctx.textAlign="center";
-                        ctx.fillText(c.v=='V'?'⭐':c.v, x+cw/2, y+ch/2+10);
-                    }
+                    if(c.s==1||c.v=='V') { ctx.font="30px Arial"; ctx.textAlign="center"; ctx.fillText(c.v=='V'?'⭐':c.v, x+cw/2, y+ch/2+10); }
                 });
                 if(done==6) { score=1000; end(); }
                 loop = requestAnimationFrame(run);
@@ -238,7 +253,7 @@
             cvs.onclick = (e) => {
                 let r = cvs.getBoundingClientRect(), mx = e.clientX-r.left, my = e.clientY-r.top;
                 cards.forEach((c, i) => {
-                    let cw = (cvs.width-60)/3, ch = (cvs.height-120)/4, x = (i%3)*(cw+10)+15, y = Math.floor(i/3)*(ch+10)+20;
+                    let cw = (cvs.width-60)/3, ch = (cvs.height-100)/4, x = (i%3)*(cw+10)+15, y = Math.floor(i/3)*(ch+10)+20;
                     if(mx>x && mx<x+cw && my>y && my<y+ch && c.v!='V' && flip.length<2 && !flip.includes(i)) {
                         c.s=1; flip.push(i);
                         if(flip.length==2) {
@@ -250,33 +265,7 @@
             };
         }
 
-        // --- 🧩 TETRIS ---
-        function runTetris() {
-            let sz = 20, col = Math.floor(cvs.width/sz), row = Math.floor(cvs.height/sz);
-            let board = Array(row).fill().map(()=>Array(col).fill(0)), cur = {x: Math.floor(col/2), y: 0};
-            function run() {
-                if(!active) return; ctx.clearRect(0,0,cvs.width,cvs.height);
-                board.forEach((r,y)=>r.forEach((v,x)=>{ if(v){ctx.fillStyle='#ffcc00'; ctx.fillRect(x*sz,y*sz,sz-1,sz-1);} }));
-                ctx.fillStyle = '#00f2ff'; ctx.fillRect(cur.x*sz, cur.y*sz, sz-1, sz-1);
-                loop = requestAnimationFrame(run);
-            }
-            let drop = setInterval(()=>{ 
-                if(!active) { clearInterval(drop); return; } 
-                cur.y++; 
-                if(cur.y>=row){ board[row-1][cur.x]=1; cur.y=0; score+=10; document.getElementById('game-ui').innerText = score; }
-            }, 450);
-            run();
-            cvs.onclick = () => { cur.x = (cur.x+1)%col; };
-        }
-
-        // --- ÇIKIŞ VE KAYIT ---
-        async function end() {
-            active = false; cancelAnimationFrame(loop);
-            const final = score;
-            if(window.saveGlobal) await window.saveGlobal(final);
-            alert("OYUN BİTTİ! SKORUN: " + final);
-            quitGame();
-        }
+        async function end() { active=false; cancelAnimationFrame(loop); if(window.saveGlobal) await window.saveGlobal(score); alert("SKOR: " + score); quitGame(); }
         function quitGame() { active = false; document.getElementById('stage').style.display = 'none'; }
     </script>
 </body>
