@@ -120,10 +120,9 @@
             if(g==='tetris') runTetris();
         }
 
-        // --- 🏗️ KULE OYUNU ---
         function runTower() {
             let bw = cvs.width * 0.4, blocks = [{x: cvs.width/2 - bw/2, y: cvs.height-40, w: bw}];
-            let cur = {x: 0, y: cvs.height-80, w: bw, v: 4}, camY = 0;
+            let cur = {x: 0, y: cvs.height-80, w: bw, v: 4.5}, camY = 0;
             function run() {
                 if(!active) return; ctx.clearRect(0,0,cvs.width,cvs.height);
                 ctx.save(); ctx.translate(0, camY);
@@ -140,18 +139,17 @@
                 score++; document.getElementById('game-ui').innerText = score;
                 blocks.push({x: cur.x, y: cur.y, w: cur.w});
                 cur.y -= 40; if(blocks.length > 5) camY += 40;
-                cur.v += (cur.v > 0 ? 0.3 : -0.3);
+                cur.v += (cur.v > 0 ? 0.35 : -0.35);
             };
         }
 
-        // --- 🐍 NEON SNAKE ---
         function runSnake() {
-            let sz = 16, s = [{x:10,y:10}], f = {x:5,y:5}, d = {x:1,y:0}, nD = {x:1,y:0}, spd = 150;
+            let sz = 16, s = [{x:10,y:10}], f = {x:5,y:5}, d = {x:1,y:0}, nD = {x:1,y:0}, spd = 140;
             function move() {
                 if(!active) return; d = nD;
                 let head = {x: s[0].x+d.x, y: s[0].y+d.y};
                 if(head.x<0||head.x>=Math.floor(cvs.width/sz)||head.y<0||head.y>=Math.floor(cvs.height/sz)||s.some(p=>p.x==head.x&&p.y==head.y)) return end();
-                if(head.x==f.x && head.y==f.y) { score+=50; spd=Math.max(50,spd-5); f={x:Math.floor(Math.random()*(cvs.width/sz-1)), y:Math.floor(Math.random()*(cvs.height/sz-1))}; } else s.pop();
+                if(head.x==f.x && head.y==f.y) { score+=50; spd=Math.max(45,spd-6); f={x:Math.floor(Math.random()*(cvs.width/sz-1)), y:Math.floor(Math.random()*(cvs.height/sz-1))}; } else s.pop();
                 s.unshift(head); ctx.clearRect(0,0,cvs.width,cvs.height);
                 ctx.fillStyle='#ff3333'; ctx.beginPath(); ctx.arc(f.x*sz+sz/2, f.y*sz+sz/2, 7, 0, 7); ctx.fill();
                 s.forEach((p,i)=> { ctx.fillStyle=i==0?'#00f2ff':'rgba(0,242,255,0.4)'; ctx.beginPath(); ctx.roundRect(p.x*sz,p.y*sz,sz-2,sz-2,5); ctx.fill(); });
@@ -162,20 +160,19 @@
             cvs.onclick = () => { let x = nD.x; nD.x = -nD.y; nD.y = x; };
         }
 
-        // --- 🧩 REAL TETRIS ---
         function runTetris() {
             const sz = 20, col = Math.floor(cvs.width/sz), row = Math.floor(cvs.height/sz);
             const shapes = [
-                { s: [[1,1,1,1]], c: '#00f2ff' }, // I
-                { s: [[1,1],[1,1]], c: '#ffcc00' }, // O
-                { s: [[0,1,0],[1,1,1]], c: '#a020f0' }, // T
-                { s: [[1,0,0],[1,1,1]], c: '#ffa500' }, // L
-                { s: [[0,0,1],[1,1,1]], c: '#0000ff' }, // J
-                { s: [[0,1,1],[1,1,0]], c: '#00ff00' }, // S
-                { s: [[1,1,0],[0,1,1]], c: '#ff0000' }  // Z
+                { s: [[1,1,1,1]], c: '#00f2ff' }, 
+                { s: [[1,1],[1,1]], c: '#ffcc00' }, 
+                { s: [[0,1,0],[1,1,1]], c: '#a020f0' }, 
+                { s: [[1,0,0],[1,1,1]], c: '#ffa500' }, 
+                { s: [[0,0,1],[1,1,1]], c: '#0000ff' }, 
+                { s: [[0,1,1],[1,1,0]], c: '#00ff00' }, 
+                { s: [[1,1,0],[0,1,1]], c: '#ff0000' }
             ];
             let board = Array(row).fill().map(()=>Array(col).fill(0));
-            let cur, pos, dropCounter = 0, dropInterval = 800;
+            let cur, pos, dropCounter = 0, dropInterval = 400; // BAŞLANGIÇ HIZI 800'DEN 400'E ÇEKİLDİ
 
             function resetPiece() {
                 const r = shapes[Math.floor(Math.random()*shapes.length)];
@@ -207,7 +204,7 @@
                     for(let x=0; x<col; x++) if(!board[y][x]) continue outer;
                     const r = board.splice(y,1)[0].fill(0);
                     board.unshift(r); score += 100; y++;
-                    dropInterval = Math.max(100, dropInterval - 20);
+                    dropInterval = Math.max(80, dropInterval - 40); // HIZLANMA KAT SAYISI ARTIRILDI
                 }
             }
 
@@ -235,7 +232,6 @@
             };
         }
 
-        // --- 🎰 CASINO MEMORY ---
         function runMemory() {
             let icons = ['🎰','🎲','💎','🃏','7️⃣','💰'], cards = [...icons, ...icons].sort(()=>Math.random()-0.5).map(v=>({v, s:0})), flip = [], done = 0;
             function run() {
@@ -253,8 +249,8 @@
             cvs.onclick = (e) => {
                 let r = cvs.getBoundingClientRect(), mx = e.clientX-r.left, my = e.clientY-r.top;
                 cards.forEach((c, i) => {
-                    let cw = (cvs.width-60)/3, ch = (cvs.height-100)/4, x = (i%3)*(cw+10)+15, y = Math.floor(i/3)*(ch+10)+20;
-                    if(mx>x && mx<x+cw && my>y && my<y+ch && c.v!='V' && flip.length<2 && !flip.includes(i)) {
+                    let cw = (cvs.width-60)/3, ch = (cvs.height-120)/4, x = (i%3)*(cw+10)+15, y = Math.floor(i/3)*(ch+10)+20;
+                    if(mx>x && mx<x+90 && my>y && my<y+90 && c.v!='V' && flip.length<2 && !flip.includes(i)) {
                         c.s=1; flip.push(i);
                         if(flip.length==2) {
                             if(cards[flip[0]].v == cards[flip[1]].v) { setTimeout(()=>{cards[flip[0]].v=cards[flip[1]].v='V'; done++; flip=[];}, 400); }
