@@ -3,293 +3,318 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Starzbet Elite</title>
+    <title>Starzbet Elite Pro</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Poppins:wght@300;600&display=swap');
-        :root { --gold: #ffcc00; --dark: #080808; --card: #151515; --neon: #00ffcc; }
+        :root { --gold: #ffcc00; --dark: #050505; --card: #121212; --neon: #00f2ff; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--dark); color: white; font-family: 'Poppins', sans-serif; margin: 0; overflow: hidden; height: 100vh; }
 
-        /* SPLASH & APP STRUCTURE */
-        #splash { position: fixed; inset: 0; background: #000; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10000; }
-        #app { display: none; height: 100vh; flex-direction: column; }
+        /* UI ELEMENTS */
+        #app { height: 100vh; display: flex; flex-direction: column; }
         .screen { flex-grow: 1; display: none; overflow-y: auto; padding: 20px 20px 100px 20px; }
-        .screen.active { display: block; animation: fadeIn 0.5s ease; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .screen.active { display: block; animation: slideUp 0.4s ease-out; }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-        /* PROMOSYON POP-UP */
-        #promo-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.95);
-            z-index: 20000; display: none; flex-direction: column;
-            justify-content: center; align-items: center; padding: 30px;
-        }
-        .promo-card {
-            background: linear-gradient(145deg, #1a1a1a, #000); border: 2px solid var(--gold);
-            border-radius: 25px; padding: 25px; text-align: center; width: 100%; position: relative;
-            box-shadow: 0 0 30px rgba(255, 204, 0, 0.2);
-        }
-        .promo-title { color: var(--gold); font-family: 'Orbitron'; font-size: 18px; margin-bottom: 15px; }
-        .promo-img { width: 80px; height: 80px; margin-bottom: 15px; }
-
-        /* HEADER & NAV */
-        .top-bar { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; background: #111; border-bottom: 1px solid #333; }
-        .stat-badge { border: 1px solid var(--gold); padding: 5px 12px; border-radius: 12px; color: var(--gold); font-family: 'Orbitron'; font-size: 13px; }
+        .top-bar { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; background: #000; border-bottom: 2px solid #222; }
+        .stat-badge { background: linear-gradient(90deg, #111, #222); border: 1px solid var(--gold); padding: 6px 15px; border-radius: 20px; color: var(--gold); font-family: 'Orbitron'; font-size: 12px; box-shadow: 0 0 10px rgba(255,204,0,0.2); }
+        
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .card { background: var(--card); border-radius: 20px; padding: 20px; text-align: center; border: 1px solid #333; }
-        .nav { position: fixed; bottom: 0; width: 100%; height: 75px; background: #111; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #333; padding-bottom: 10px; }
-        .nav-btn { background: none; border: none; color: #666; font-size: 11px; }
-        .nav-btn.active { color: var(--gold); }
+        .card { background: var(--card); border-radius: 25px; padding: 25px; text-align: center; border: 1px solid #222; transition: 0.3s; position: relative; overflow: hidden; }
+        .card:active { transform: scale(0.92); }
+        .card i { font-size: 35px; display: block; margin-bottom: 10px; }
+        .card.new::before { content: "YENİ"; position: absolute; top: 10px; right: -20px; background: var(--gold); color: black; font-size: 9px; font-weight: bold; padding: 2px 25px; transform: rotate(45deg); }
+
+        .nav { position: fixed; bottom: 0; width: 100%; height: 80px; background: rgba(0,0,0,0.9); backdrop-filter: blur(10px); display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #333; padding-bottom: 15px; }
+        .nav-btn { background: none; border: none; color: #555; font-size: 10px; display: flex; flex-direction: column; align-items: center; transition: 0.3s; }
+        .nav-btn.active { color: var(--gold); transform: translateY(-5px); }
 
         /* GAME STAGE */
         #stage { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; flex-direction: column; }
-        canvas { display: block; margin: auto; background: #050505; }
+        canvas { display: block; background: #000; touch-action: none; }
     </style>
 </head>
 <body>
 
-    <div id="promo-overlay">
-        <div class="promo-card">
-            <div class="promo-title">STARZBET DUYURU</div>
-            <div id="promo-icon" style="font-size: 50px; margin-bottom: 10px;">🎁</div>
-            <p id="promo-text" style="font-weight: 600; font-size: 14px; line-height: 1.5;"></p>
-            <button id="close-promo" disabled style="margin-top:20px; width: 100%; background:#444; color:white; border:none; padding:12px; border-radius:12px; font-weight:bold;">BEKLEYİN (3s)</button>
-        </div>
-    </div>
-
-    <div id="splash">
-        <div style="font-family:'Orbitron'; color:var(--gold); font-size:30px; margin-bottom:10px;">STARZBET</div>
-        <div style="letter-spacing:3px; font-size:10px; color:#666;">KÜÇÜK DÜNYAYA HOŞGELDİNİZ</div>
-    </div>
-
     <div id="app">
         <div class="top-bar">
-            <div id="u-name" style="font-weight:bold; letter-spacing:1px;">OYUNCU</div>
-            <div class="stat-badge">PUAN: <span id="total-val">0</span></div>
+            <div id="u-name" style="font-weight:bold; letter-spacing:1px; font-family:'Orbitron'; font-size:14px;">OYUNCU</div>
+            <div class="stat-badge">TOKEN: <span id="total-val">0</span></div>
         </div>
 
         <div id="home" class="screen active">
-            <div style="background:linear-gradient(45deg, #ffcc00, #aa8800); border-radius:15px; padding:15px; color:black; margin-bottom:20px;">
-                <h4 style="margin:0">⭐ VIP Üyelik Fırsatı</h4>
-                <p style="margin:5px 0; font-size:11px;">Hemen oyna, haftalık çekilişe katıl!</p>
+            <div style="background:linear-gradient(135deg, #1a1a1a, #000); border: 1px solid #333; border-radius:20px; padding:20px; margin-bottom:25px; position: relative;">
+                <div style="color:var(--gold); font-family:'Orbitron'; font-size:16px;">STARZBET ELITE</div>
+                <p style="font-size:11px; color:#aaa; margin: 5px 0 0 0;">Yüksek grafikli oyunlarla sınırları zorla.</p>
             </div>
             <div class="grid">
-                <div class="card" onclick="launch('tower')"><i>🏗️</i><br><span>KULE</span></div>
-                <div class="card" onclick="launch('space')"><i>🚀</i><br><span>UZAY</span></div>
-                <div class="card" onclick="launch('snake')"><i>🐍</i><br><span>YILAN</span></div>
-                <div class="card" onclick="launch('memory')"><i>🧠</i><br><span>HAFIZA</span></div>
+                <div class="card" onclick="launch('tower')"><i>🏗️</i><span>KULE (PRO)</span></div>
+                <div class="card new" onclick="launch('rider')" style="border-color: var(--neon);"><i>⚡</i><span style="color:var(--neon)">NEON RIDER</span></div>
+                <div class="card" onclick="launch('snake')"><i>🐍</i><span>SNAKE X</span></div>
+                <div class="card" onclick="launch('memory')"><i>🧠</i><span>HAFIZA</span></div>
             </div>
         </div>
 
         <div id="ranks" class="screen">
-            <h3>🏆 GÜNLÜK LİDERLER</h3>
+            <h3 style="color:var(--gold); font-family:'Orbitron';">🏆 GLOBAL LEADERBOARD</h3>
             <div id="leader-list"></div>
         </div>
 
         <nav class="nav">
-            <button class="nav-btn active" onclick="tab('home', this)"><i>🏠</i><br>KEŞFET</button>
-            <button class="nav-btn" onclick="tab('ranks', this)"><i>🏆</i><br>SIRALAMA</button>
+            <button class="nav-btn active" onclick="tab('home', this)"><span>🏠</span><span>KEŞFET</span></button>
+            <button class="nav-btn" onclick="tab('ranks', this)"><span>🏆</span><span>LİDERLER</span></button>
         </nav>
     </div>
 
     <div id="stage">
-        <div style="padding:15px; display:flex; justify-content:space-between; align-items:center; background:#111;">
-            <button onclick="quitGame()" style="background:#ff4444; color:white; border:none; padding:8px 12px; border-radius:8px;">KAPAT</button>
-            <div style="font-family:'Orbitron'; font-size:18px;">SKOR: <span id="live-p">0</span></div>
-            <div></div>
+        <div style="padding:15px; display:flex; justify-content:space-between; align-items:center; background:#000;">
+            <button onclick="quitGame()" style="background:#ff3333; color:white; border:none; padding:8px 15px; border-radius:10px; font-weight:bold; font-size:12px;">ÇIKIŞ</button>
+            <div id="game-ui" style="font-family:'Orbitron'; font-size:20px; color:var(--gold);">0</div>
+            <div style="width:50px"></div>
         </div>
         <canvas id="cvs"></canvas>
     </div>
 
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyB4JIv0kny1PG_d2bsbGXxt0eQbxrzHWo4",
+            authDomain: "starzbet-score.firebaseapp.com",
+            projectId: "starzbet-score",
+            storageBucket: "starzbet-score.firebasestorage.app",
+            messagingSenderId: "100283892830",
+            appId: "1:100283892830:web:d970d37961616762ef60cf"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        window.db = db;
+
+        const tg = window.Telegram.WebApp;
+        const uName = (tg.initDataUnsafe?.user?.first_name || "MERT").toUpperCase();
+        document.getElementById('u-name').innerText = uName;
+
+        window.saveGlobal = async (s) => {
+            try { await addDoc(collection(db, "scores"), { name: uName, points: s, timestamp: serverTimestamp() }); } catch(e){}
+        };
+
+        window.loadLeaders = async () => {
+            const container = document.getElementById('leader-list');
+            container.innerHTML = "Yükleniyor...";
+            const q = query(collection(db, "scores"), orderBy("points", "desc"), limit(10));
+            const snap = await getDocs(q);
+            container.innerHTML = "";
+            let i = 1;
+            snap.forEach(doc => {
+                const d = doc.data();
+                container.innerHTML += `<div style="background:#111; padding:15px; border-radius:15px; margin-bottom:10px; display:flex; justify-content:space-between; border:1px solid #222;">
+                    <span>#${i} ${d.name}</span><span style="color:var(--gold); font-family:'Orbitron';">${d.points}</span>
+                </div>`;
+                i++;
+            });
+        };
+    </script>
+
     <script>
         const tg = window.Telegram.WebApp;
-        tg.expand();
-        let balance = parseInt(localStorage.getItem('sz_bal')) || 0;
-        let gamesPlayed = 0;
-        document.getElementById('total-val').innerText = balance;
-        document.getElementById('u-name').innerText = (tg.initDataUnsafe?.user?.first_name || "MİSAFİR").toUpperCase();
-
-        const promos = [
-            { t: "%100 Hoşgeldin Bonusu Starzbet'te sizi bekliyor!", i: "💰" },
-            { t: "Her gün 00:00'da liderlik tablosu sıfırlanır, ödüller dağıtılır!", i: "🏆" },
-            { t: "Arkadaşını davet et, kaybettiğinde %10 iade kazan!", i: "👥" },
-            { t: "Starzbet güncel giriş adresi için Telegram kanalımızı takip edin!", i: "🔗" }
-        ];
-
-        function checkPromo() {
-            gamesPlayed++;
-            if (gamesPlayed % 2 === 0) {
-                const overlay = document.getElementById('promo-overlay');
-                const btn = document.getElementById('close-promo');
-                const text = document.getElementById('promo-text');
-                const icon = document.getElementById('promo-icon');
-                
-                const rand = promos[Math.floor(Math.random() * promos.length)];
-                text.innerText = rand.t;
-                icon.innerText = rand.i;
-                overlay.style.display = 'flex';
-                
-                let time = 3;
-                btn.disabled = true; btn.style.background = "#444";
-                let inter = setInterval(() => {
-                    time--;
-                    btn.innerText = `BEKLEYİN (${time}s)`;
-                    if(time <= 0) {
-                        clearInterval(inter);
-                        btn.disabled = false;
-                        btn.style.background = "var(--gold)";
-                        btn.style.color = "black";
-                        btn.innerText = "DEVAM ET";
-                    }
-                }, 1000);
-                btn.onclick = () => { overlay.style.display = 'none'; };
-            }
-        }
-
-        setTimeout(() => { document.getElementById('splash').style.display='none'; document.getElementById('app').style.display='flex'; }, 2000);
+        let loop, score = 0, active = false;
+        const cvs = document.getElementById('cvs');
+        const ctx = cvs.getContext('2d');
 
         function tab(id, el) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             document.getElementById(id).classList.add('active');
             el.classList.add('active');
-            if(id === 'ranks') loadLeaders();
-            tg.HapticFeedback.impactOccurred('light');
+            if(id === 'ranks' && window.loadLeaders) window.loadLeaders();
         }
-
-        const cvs = document.getElementById('cvs');
-        const ctx = cvs.getContext('2d');
-        let loop, score = 0, active = false;
 
         function launch(g) {
             document.getElementById('stage').style.display = 'flex';
-            cvs.width = window.innerWidth; cvs.height = window.innerHeight * 0.8;
+            cvs.width = window.innerWidth; cvs.height = window.innerHeight - 80;
             score = 0; active = true;
             if(g==='tower') runTower();
-            if(g==='space') runSpace();
+            if(g==='rider') runRider();
             if(g==='snake') runSnake();
             if(g==='memory') runMemory();
         }
 
+        // --- 🏗️ KULE PRO (DÜŞME EFEKTİ VE HIZLANMA) ---
         function runTower() {
-            let b = [{x: cvs.width/2-50, y: cvs.height-40, w: 100}];
-            let c = {x: 0, y: cvs.height-80, w: 100, v: 5};
+            let blocks = [{x: cvs.width/2-60, y: cvs.height-40, w: 120}];
+            let cur = {x: 0, y: cvs.height-80, w: 120, v: 4};
+            let debris = [];
+            let camY = 0;
+
             function run() {
                 if(!active) return;
                 ctx.clearRect(0,0,cvs.width,cvs.height);
-                b.forEach(i => { ctx.fillStyle=i.y===cvs.height-40?'#333':'#ffcc00'; ctx.fillRect(i.x, i.y, i.w, 38); });
-                ctx.fillStyle='#fff'; ctx.fillRect(c.x, c.y, c.w, 38);
-                c.x += c.v; if(c.x+c.w > cvs.width || c.x < 0) c.v *= -1;
+                ctx.save(); ctx.translate(0, camY);
+                
+                blocks.forEach((b, i) => {
+                    ctx.fillStyle = i % 2 === 0 ? '#ffcc00' : '#aa8800';
+                    ctx.fillRect(b.x, b.y, b.w, 38);
+                });
+
+                debris.forEach((d, i) => {
+                    d.y += 10; d.vY += 0.5;
+                    ctx.fillStyle = '#666'; ctx.fillRect(d.x, d.y, d.w, 38);
+                    if(d.y > cvs.height + 500) debris.splice(i,1);
+                });
+
+                ctx.fillStyle = '#fff'; ctx.fillRect(cur.x, cur.y, cur.w, 38);
+                ctx.restore();
+
+                cur.x += cur.v;
+                if(cur.x + cur.w > cvs.width || cur.x < 0) cur.v *= -1;
                 loop = requestAnimationFrame(run);
             }
             run();
+
             cvs.onclick = () => {
-                let prev = b[b.length-1];
-                if(c.x > prev.x + prev.w || c.x + c.w < prev.x) return end();
-                score++; document.getElementById('live-p').innerText = score;
-                b.push({x: c.x, y: c.y, w: c.w});
-                c.y -= 40; if(b.length > 8) b.forEach(i => i.y += 40), c.y += 40;
+                let prev = blocks[blocks.length-1];
+                let diff = cur.x - prev.x;
+                if(Math.abs(diff) >= cur.w) return end();
+
+                if(diff > 0) { // Sağdan düştü
+                    debris.push({x: prev.x + cur.w, y: cur.y, w: diff, vY: 0});
+                    cur.w -= diff;
+                } else { // Soldan düştü
+                    debris.push({x: cur.x, y: cur.y, w: Math.abs(diff), vY: 0});
+                    cur.w += diff; cur.x = prev.x;
+                }
+
+                score++; document.getElementById('game-ui').innerText = score;
+                blocks.push({x: cur.x, y: cur.y, w: cur.w});
+                cur.y -= 40; if(blocks.length > 5) camY += 40;
+                
+                // HIZLANMA MANTIĞI
+                let speedBoost = score > 10 ? (score - 10) * 0.15 : 0;
+                cur.v = (Math.abs(cur.v) + speedBoost + 0.1) * (cur.v > 0 ? 1 : -1);
                 tg.HapticFeedback.impactOccurred('medium');
             };
         }
 
-        function runSpace() {
-            let y = 200, v = 0, obs = [];
+        // --- ⚡ NEON RIDER (3D GÖRÜNÜMLÜ YÜKSEK GRAFİK) ---
+        function runRider() {
+            let player = { x: cvs.width/2, w: 40 };
+            let obstacles = [];
+            let frame = 0;
+            let speed = 7;
+
             function run() {
-                if(!active) return; ctx.clearRect(0,0,cvs.width,cvs.height);
-                v += 0.3; y += v; ctx.fillStyle='#00ffcc'; ctx.fillRect(50, y, 30, 30);
-                if(Math.random()<0.04) obs.push({x:cvs.width, y:Math.random()*cvs.height, w:30, h:80});
-                obs.forEach(o => { 
-                    o.x -= 6; ctx.fillStyle='#ff4444'; ctx.fillRect(o.x, o.y, o.w, o.h);
-                    if(50 < o.x + o.w && 80 > o.x && y < o.y + o.h && y + 30 > o.y) end();
+                if(!active) return;
+                frame++;
+                ctx.fillStyle = '#000'; ctx.fillRect(0,0,cvs.width,cvs.height);
+
+                // Tünel Çizimi (Neon Efekti)
+                for(let i=0; i<10; i++) {
+                    ctx.strokeStyle = `rgba(0, 242, 255, ${0.1 * i})`;
+                    let offset = (frame * speed) % 100;
+                    ctx.strokeRect(cvs.width/2 - 50*i - offset, cvs.height/2 - 50*i - offset, 100*i + offset*2, 100*i + offset*2);
+                }
+
+                // Engeller
+                if(frame % 40 === 0) obstacles.push({x: Math.random()*(cvs.width-60), y: -100, w: 60, h: 20});
+                
+                obstacles.forEach((o, i) => {
+                    o.y += speed;
+                    ctx.fillStyle = '#ff0066';
+                    ctx.shadowBlur = 20; ctx.shadowColor = '#ff0066';
+                    ctx.fillRect(o.x, o.y, o.w, o.h);
+                    ctx.shadowBlur = 0;
+                    if(o.y > cvs.height) obstacles.splice(i,1);
+                    if(player.x < o.x + o.w && player.x + player.w > o.x && cvs.height-120 < o.y + o.h && cvs.height-120 + 40 > o.y) end();
                 });
-                if(y > cvs.height || y < 0) end();
-                score++; document.getElementById('live-p').innerText = Math.floor(score/10);
+
+                // Oyuncu (Gemi)
+                ctx.fillStyle = '#00f2ff';
+                ctx.shadowBlur = 15; ctx.shadowColor = '#00f2ff';
+                ctx.fillRect(player.x, cvs.height-120, player.w, 40);
+                ctx.shadowBlur = 0;
+
+                speed += 0.002;
+                score++; document.getElementById('game-ui').innerText = Math.floor(score/10);
                 loop = requestAnimationFrame(run);
             }
             run();
-            cvs.onclick = () => { v = -6; tg.HapticFeedback.impactOccurred('light'); };
+
+            cvs.ontouchmove = (e) => {
+                let rect = cvs.getBoundingClientRect();
+                player.x = e.touches[0].clientX - rect.left - player.w/2;
+                if(player.x < 0) player.x = 0;
+                if(player.x > cvs.width - player.w) player.x = cvs.width - player.w;
+            };
         }
 
+        // --- 🐍 SNAKE X (KLASİK AMA SERT) ---
         function runSnake() {
-            let s = [{x:10,y:10}], f = {x:5,y:5}, d = {x:1,y:0}, t = 0;
+            let s = [{x:10,y:10}], f = {x:5,y:5}, d = {x:1,y:0}, nextD = {x:1,y:0}, t = 0;
             function run() {
-                if(!active) return; if(++t < 8) { loop = requestAnimationFrame(run); return; } t = 0;
+                if(!active) return;
+                if(++t < 6) { loop = requestAnimationFrame(run); return; }
+                t = 0; d = nextD;
                 ctx.clearRect(0,0,cvs.width,cvs.height);
-                let n = {x: s[0].x+d.x, y: s[0].y+d.y};
-                if(n.x==f.x && n.y==f.y) { score+=10; f={x:Math.floor(Math.random()*15),y:Math.floor(Math.random()*20)}; } else s.pop();
-                if(n.x<0||n.y<0||n.x>19||n.y>25||s.some(p=>p.x==n.x&&p.y==n.y)) return end();
-                s.unshift(n); document.getElementById('live-p').innerText = score;
-                ctx.fillStyle='#00ffcc'; s.forEach(p=>ctx.fillRect(p.x*20, p.y*20, 18, 18));
-                ctx.fillStyle='#ff4444'; ctx.fillRect(f.x*20, f.y*20, 18, 18);
+                let head = {x: s[0].x + d.x, y: s[0].y + d.y};
+                if(head.x===f.x && head.y===f.y) {
+                    score += 50; f = {x:Math.floor(Math.random()*18), y:Math.floor(Math.random()*25)};
+                } else s.pop();
+                if(head.x<0||head.y<0||head.x>=20||head.y>=30||s.some(p=>p.x==head.x&&p.y==head.y)) return end();
+                s.unshift(head);
+                document.getElementById('game-ui').innerText = score;
+                ctx.fillStyle = '#00f2ff'; s.forEach(p => ctx.fillRect(p.x*20, p.y*20, 18, 18));
+                ctx.fillStyle = '#ff0066'; ctx.fillRect(f.x*20, f.y*20, 18, 18);
                 loop = requestAnimationFrame(run);
             }
             run();
-            cvs.onclick = (e) => { let x = d.x; d.x = -d.y; d.y = x; tg.HapticFeedback.impactOccurred('light'); };
+            cvs.onclick = () => { let x = nextD.x; nextD.x = -nextD.y; nextD.y = x; };
         }
 
+        // --- 🧠 HAFIZA ---
         function runMemory() {
-            let cards = ['🍒','🍒','🍋','🍋','🔔','🔔','💎','💎','7️⃣','7️⃣','🍉','🍉'];
+            let cards = ['🎰','🎰','🎲','🎲','💎','💎','🃏','🃏','🔥','🔥','💰','💰'];
             cards.sort(() => Math.random() - 0.5);
             let flip = [], done = 0;
-            function draw() {
-                ctx.clearRect(0,0,cvs.width,cvs.height);
+            function run() {
+                if(!active) return; ctx.clearRect(0,0,cvs.width,cvs.height);
                 cards.forEach((c, i) => {
-                    let x = (i%3)*100+40, y = Math.floor(i/3)*100+40;
-                    ctx.fillStyle = '#1a1a1a'; ctx.fillRect(x,y,80,80);
+                    let x = (i%3)*110+30, y = Math.floor(i/3)*110+50;
+                    ctx.fillStyle = '#111'; ctx.fillRect(x,y,90,90);
                     if(flip.includes(i) || c === 'V') {
-                        ctx.font = "30px Arial";
-                        ctx.fillText(c === 'V' ? '⭐' : c, x+25, y+50);
+                        ctx.font = "40px Arial"; ctx.textAlign="center"; ctx.fillText(c==='V'?'⭐':c, x+45, y+60);
                     }
                 });
-                if(done === 6) { score = 300; end(); }
-                loop = requestAnimationFrame(draw);
+                if(done === 6) { score = 1000; end(); }
+                loop = requestAnimationFrame(run);
             }
-            draw();
+            run();
             cvs.onclick = (e) => {
-                let rect = cvs.getBoundingClientRect(), mx = e.clientX-rect.left, my = e.clientY-rect.top;
+                let r = cvs.getBoundingClientRect(), mx = e.clientX-r.left, my = e.clientY-r.top;
                 cards.forEach((c, i) => {
-                    let x = (i%3)*100+40, y = Math.floor(i/3)*100+40;
-                    if(mx>x && mx<x+80 && my>y && my<y+80 && cards[i]!=='V' && flip.length<2) {
+                    let x = (i%3)*110+30, y = Math.floor(i/3)*110+50;
+                    if(mx>x && mx<x+90 && my>y && my<y+90 && cards[i]!=='V' && !flip.includes(i) && flip.length<2) {
                         flip.push(i);
                         if(flip.length===2) {
                             if(cards[flip[0]]===cards[flip[1]]) { setTimeout(()=>{ cards[flip[0]]=cards[flip[1]]='V'; done++; flip=[]; }, 300); }
-                            else { setTimeout(()=>{ flip=[]; }, 500); }
+                            else { setTimeout(()=>{ flip=[]; }, 600); }
                         }
                     }
                 });
             };
         }
 
-        function end() {
+        async function end() {
             active = false; cancelAnimationFrame(loop);
-            balance += score; localStorage.setItem('sz_bal', balance);
-            document.getElementById('total-val').innerText = balance;
-            save(score);
-            alert("SKOR: " + score);
+            const finalScore = Math.floor(score);
+            if(window.saveGlobal) await window.saveGlobal(finalScore);
+            alert("OYUN BİTTİ! SKORUN: " + finalScore);
             quitGame();
-            checkPromo();
         }
 
-        function save(s) {
-            let l = JSON.parse(localStorage.getItem('sz_ranks')) || [];
-            l.push({n: (tg.initDataUnsafe?.user?.first_name || "OYUNCU"), s: s});
-            l.sort((a,b)=>b.s-a.s);
-            localStorage.setItem('sz_ranks', JSON.stringify(l.slice(0, 10)));
-        }
-
-        function loadLeaders() {
-            let l = JSON.parse(localStorage.getItem('sz_ranks')) || [];
-            const c = document.getElementById('leader-list');
-            c.innerHTML = l.length === 0 ? "<p>Henüz kimse oynamadı!</p>" : "";
-            l.forEach((x, i) => {
-                c.innerHTML += `<div style="background:#1a1a1a; padding:15px; border-radius:15px; margin-bottom:10px; display:flex; justify-content:space-between;">
-                    <span>#${i+1} ${x.n}</span><span style="color:var(--gold)">${x.s}</span>
-                </div>`;
-            });
-        }
-
-        function quitGame() { active=false; cancelAnimationFrame(loop); document.getElementById('stage').style.display='none'; }
+        function quitGame() { active = false; cancelAnimationFrame(loop); document.getElementById('stage').style.display = 'none'; }
     </script>
 </body>
 </html>
