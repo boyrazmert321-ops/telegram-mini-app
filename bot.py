@@ -11,13 +11,13 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppI
 from telegram.constants import ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
-# --- 1. RENDER SAHTE SUNUCU (Port Sorunu Çözücü) ---
+# --- 1. RENDER SAHTE SUNUCU ---
 def run_dummy_server():
     PORT = int(os.environ.get("PORT", 8080))
     handler = http.server.SimpleHTTPRequestHandler
     try:
         with socketserver.TCPServer(("", PORT), handler) as httpd:
-            print(f"🚀 Render için sahte sunucu {PORT} portunda aktif.")
+            print(f"🚀 Render sahte sunucu {PORT} portunda aktif.")
             httpd.serve_forever()
     except Exception as e:
         print(f"Sunucu hatası: {e}")
@@ -31,14 +31,12 @@ ID_LISTE_DOSYASI = "kullanicilar.txt"
 TR_SAAT_DILIMI = pytz.timezone('Europe/Istanbul')
 
 LINK_GIRIS           = "https://cutt.ly/drVOi2EN"
-LINK_OZEL_ORAN_SITE  = "https://ozeloranlar.com/"
-LINK_OZEL_ORAN_KANAL = "https://t.me/Starzbetgir"
 LINK_BONUS           = "https://starzbet422.com/tr-tr/info/promos"
 LINK_CANLI_DESTEK    = "https://service.3kanumaigc.com/chatwindow.aspx?siteId=90005302&planId=1b050682-cde5-4176-8236-3bb94c891197#"
 LINK_APP             = "https://starzmobil.com/indir/"
 LINK_MINI_APP        = "https://telegram-mini-app-umber-chi.vercel.app" 
 
-# --- 3. YARDIMCI FONKSİYONLAR (Veritabanı) ---
+# --- 3. YARDIMCI FONKSİYONLAR ---
 def kullanici_kaydet(user_id):
     user_id = str(user_id)
     if not os.path.exists(ID_LISTE_DOSYASI):
@@ -54,13 +52,13 @@ def kullanicilari_getir():
     with open(ID_LISTE_DOSYASI, "r") as f:
         return f.read().splitlines()
 
-# --- 4. KLAVYELER (Şovun Başladığı Yer) ---
+# --- 4. KLAVYELER (GÜNCELLENMİŞ) ---
 def ana_menu_kb():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("🎰 STARZBET MİNİ (OYNA)", web_app=WebAppInfo(url=LINK_MINI_APP))],
-        [InlineKeyboardButton("💰 Yatırım İşlemleri", callback_data="finans_yatirim"), InlineKeyboardButton("🏦 Çekim Hızı", callback_data="finans_cekim")],
-        [InlineKeyboardButton("✨ Kayıp Bonusu", callback_data="bonus_kayip"), InlineKeyboardButton("🎰 Hoş Geldin", callback_data="bonus_hosgeldin")],
-        [InlineKeyboardButton("📱 Mobil Uygulama", callback_data="tech_app"), InlineKeyboardButton("🧩 Giriş Sorunu", callback_data="tech_sorun")],
+        [InlineKeyboardButton("💰 Yatırım Yöntemleri", callback_data="finans_yatirim"), InlineKeyboardButton("✨ Kayıp Bonusu", callback_data="bonus_kayip")],
+        [InlineKeyboardButton("🎰 Hoş Geldin Bonusu", callback_data="bonus_hosgeldin"), InlineKeyboardButton("📱 Mobil Uygulama", callback_data="tech_app")],
+        [InlineKeyboardButton("🧩 Giriş Sorunu", callback_data="tech_sorun")],
         [InlineKeyboardButton("🔗 GÜNCEL GİRİŞ", url=LINK_GIRIS), InlineKeyboardButton("🎧 CANLI DESTEK", url=LINK_CANLI_DESTEK)]
     ])
 
@@ -76,12 +74,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"🏆 <b>Hoş Geldin VIP Ortağım {user.first_name}!</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
         "Starzbet dünyasında tüm kontrol senin elinde.\n"
-        "Hem oyun oynayabilir, hem de merak ettiğin her sorunun\n"
-        "cevabını saniyeler içinde buradan alabilirsin. 🔥\n\n"
+        "İşlemlerin ve merak ettiğin her şey için doğru yerdesin. 🔥\n\n"
         "👇 <b>İşlem seçerek başlayalım:</b>"
     )
     
-    # Callback veya normal mesaj kontrolü
     target = update.message if update.message else update.callback_query.message
     
     if os.path.exists(RESIM_YOLU) and not update.callback_query:
@@ -98,12 +94,11 @@ async def buton_tiklama(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     cevaplar = {
-        "finans_yatirim": "💰 <b>Yatırım İşlemleri:</b>\n\nKanka Payfix ve Papara ile minimum 250₺, Kripto ile alt limitsiz yatırım yapabilirsin. İşlemlerin 1-5 dakika içinde hesabında!",
-        "finans_cekim": "🏦 <b>Çekim Hızı:</b>\n\nStarzbet'te çekimler ışık hızında! Talebin onaylandıktan sonra 30 dakika içinde hesabında olur. Günlük çekim limitimiz çok esnektir.",
-        "bonus_kayip": "✨ <b>Kayıp Bonusu:</b>\n\nŞanssız bir gün mü? Günlük %25'e varan kayıp bonusunu gece 00:00'dan sonra canlı destek hattından anında talep edebilirsin.",
-        "bonus_hosgeldin": "🎰 <b>Hoş Geldin Bonusu:</b>\n\nİlk yatırımına özel %100 çevrimsiz bonusun seni bekliyor. Yatırım yap ve hiç oyun oynamadan desteğe bağlanıp bonusunu iste!",
-        "tech_app": "📱 <b>Mobil Uygulama:</b>\n\nAndroid veya iOS cihazın için özel uygulamamızı kurarak kesintisiz erişim sağlayabilirsin. Link aşağıda seni bekliyor!",
-        "tech_sorun": "🧩 <b>Giriş Sorunu:</b>\n\nEğer siteye erişemiyorsan VPN kapatıp dene veya 'GÜNCEL GİRİŞ' butonuna tıkla. Adresimiz her zaman günceldir."
+        "finans_yatirim": "💰 <b>Yatırım Yöntemleri:</b>\n\nKanka artık Payfix yok, en hızlı yöntemimiz <b>Dinamik Pay</b> aktif! Dilediğin tutarda anında yatırım yapabilirsin. Ayrıca Papara ve Kripto seçeneklerimiz de açık.",
+        "bonus_kayip": "✨ <b>Kayıp Bonusu:</b>\n\nStarzbet'te kaybetsen de yanındayız! Hafta içi <b>%30</b>'a varan, <b>CUMA, CUMARTESİ ve PAZAR</b> günleri ise direkt <b>%35</b> Kayıp Bonusu seni bekliyor!",
+        "bonus_hosgeldin": "🎰 <b>Hoş Geldin Bonusu:</b>\n\nİlk yatırımına özel devasa çevrimsiz bonusun hazır. Yatırımını yap, hiçbir oyuna girmeden Canlı Destek hattına bağlan ve bonusunu iste!",
+        "tech_app": "📱 <b>Mobil Uygulama:</b>\n\nBTK engellerine takılmadan oynamak için Android veya iOS cihazına uygulamamızı kurabilirsin. Link aşağıda mevcuttur!",
+        "tech_sorun": "🧩 <b>Giriş Sorunu:</b>\n\nErişim sorunu yaşıyorsan VPN kapatıp tekrar dene veya 'GÜNCEL GİRİŞ' butonuna bas. Linkimiz her zaman günceldir."
     }
 
     if data in cevaplar:
@@ -121,15 +116,15 @@ async def kelime_takip(update: Update, context: ContextTypes.DEFAULT_TYPE):
         kb = [[InlineKeyboardButton("🟠 GÜNCEL GİRİŞ ADRESİ", url=LINK_GIRIS)]]
         await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(kb), parse_mode=ParseMode.HTML)
 
-# --- 6. PROMOSYON ZAMANLAYICISI ---
+# --- 6. PROMOSYON ZAMANLAYICISI (Hafta Sonu Vurgulu) ---
 async def dm_promosyon_gonder(context: ContextTypes.DEFAULT_TYPE):
     user_ids = kullanicilari_getir()
     if not user_ids: return
     mesaj = (
-        "🎁 <b>%35 KAYIP BONUS FIRSATI!</b>\n"
+        "🎁 <b>HAFTA SONUNA ÖZEL %35 KAYIP BONUSU!</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
-        "Hafta sonuna özel kayıplarına %35 iade Starzbet'te!\n\n"
-        f"🔗 <a href='{LINK_GIRIS}'>HEMEN GİRİŞ YAP VE KAZAN</a>"
+        "Bugün günlerden Starzbet! Kayıplarına anında %35 iade alarak şansını tekrar dene.\n\n"
+        f"🔗 <a href='{LINK_GIRIS}'>GİRİŞ YAP VE İADENİ AL</a>"
     )
     for uid in user_ids:
         try:
@@ -142,7 +137,6 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
     application = ApplicationBuilder().token(TOKEN).build()
 
-    # Menü Komutları
     async def set_commands():
         commands = [
             BotCommand("start", "🔥 VIP Menüyü Aç"),
@@ -150,18 +144,17 @@ if __name__ == '__main__':
         ]
         await application.bot.set_my_commands(commands)
 
-    # Zamanlanmış Görevler
+    # Promosyon Saatleri
     saatler = [time(12,0), time(18,0), time(22,0)]
     for s in saatler:
         application.job_queue.run_daily(dm_promosyon_gonder, time=s.replace(tzinfo=TR_SAAT_DILIMI))
 
-    # Handlerlar
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("mini_app", start))
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), kelime_takip))
     application.add_handler(CallbackQueryHandler(buton_tiklama))
 
-    print("🚀 Starzbet VIP Asistanı Render üzerinde aktif!")
+    print("🚀 Starzbet VIP Güncel Verilerle Aktif!")
     
     try:
         loop = asyncio.get_event_loop()
