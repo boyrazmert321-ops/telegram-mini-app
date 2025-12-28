@@ -4,24 +4,21 @@ import asyncio
 import http.server
 import socketserver
 import threading
-from datetime import time
-import pytz
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo, BotCommand
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.constants import ParseMode
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
 
-# ==========================================
-# 🖼️ GÖRSEL KONTROL MERKEZİ (MEDIA MANAGER)
-# Buradaki isimleri GitHub'daki dosyalarla eşle
-# ==========================================
+# --- GÖRSEL YOLLARI (OS JOIN İLE GARANTİYE ALINDI) ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 MEDIA = {
-    "ANA_MENU": "ana.jpg",        # Ana karşılama görseli
-    "DINAMIK_PAY": "dinamik.jpg",  # Dinamik Pay bilgilendirme
-    "SLOT_100": "casinohosgelin.jpg",      # Slot Hoş Geldin
-    "SPOR_100": "sporhosgel.jpg",      # Spor Hoş Geldin
-    "KRIPTO_100": "kripto.jpg",  # Kripto Hoş Geldin
-    "KAYIP_35": "35kayip.jpg",     # Kayıp Bonusu görseli
-    "MOBIL_APP": "uygulama.jpg"       # Uygulama indirme görseli
+    "ANA_MENU": os.path.join(BASE_DIR, "ana.jpg"),
+    "DINAMIK_PAY": os.path.join(BASE_DIR, "dinamik.jpg"),
+    "SLOT_100": os.path.join(BASE_DIR, "casinohosgelin.jpg"),
+    "SPOR_100": os.path.join(BASE_DIR, "sporhosgelin.jpg"),
+    "KRIPTO_100": os.path.join(BASE_DIR, "kripto.jpg"),
+    "KAYIP_35": os.path.join(BASE_DIR, "35kayip.jpg"),
+    "MOBIL_APP": os.path.join(BASE_DIR, "uygulama.jpg")
 }
 
 # --- AYARLAR ---
@@ -30,7 +27,7 @@ LINK_GIRIS = "https://cutt.ly/drVOi2EN"
 LINK_CANLI_DESTEK = "https://service.3kanumaigc.com/chatwindow.aspx?siteId=90005302&planId=1b050682-cde5-4176-8236-3bb94c891197#"
 LINK_MINI_APP = "https://telegram-mini-app-umber-chi.vercel.app"
 
-# --- RENDER SERVER ---
+# --- RENDER İÇİN PORT AÇMA ---
 def run_dummy_server():
     PORT = int(os.environ.get("PORT", 8080))
     handler = http.server.SimpleHTTPRequestHandler
@@ -40,11 +37,11 @@ def run_dummy_server():
     except Exception: pass
 threading.Thread(target=run_dummy_server, daemon=True).start()
 
-# --- KLAVYE TASARIMLARI ---
+# --- BUTONLAR ---
 def ana_menu_kb():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("🎰 STARZBET MİNİ APP", web_app=WebAppInfo(url=LINK_MINI_APP))],
-        [InlineKeyboardButton("💳 DİNAMİK PAY İLE ANINDA YATIRIM", callback_data="btn_dinamik")],
+        [InlineKeyboardButton("💳 DİNAMİK PAY İLE YATIRIM", callback_data="btn_dinamik")],
         [InlineKeyboardButton("🎰 SLOT %100 HOŞ GELDİN", callback_data="btn_slot"), 
          InlineKeyboardButton("⚽ SPOR %100 HOŞ GELDİN", callback_data="btn_spor")],
         [InlineKeyboardButton("🪙 KRİPTO %100 HOŞ GELDİN", callback_data="btn_kripto"), 
@@ -56,20 +53,19 @@ def ana_menu_kb():
 
 def detay_kb():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🌐 HEMEN SİTEYE GİT", url=LINK_GIRIS)],
-        [InlineKeyboardButton("⬅️ ANA MENÜYE DÖN", callback_data="btn_back")]
+        [InlineKeyboardButton("🌐 SİTEYE GİT", url=LINK_GIRIS)],
+        [InlineKeyboardButton("⬅️ GERİ DÖN", callback_data="btn_back")]
     ])
 
 # --- FONKSİYONLAR ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     text = (
-        "⭐ <b>Starzbet Profesyonel VIP Destek Sistemine Hoş Geldiniz.</b>\n\n"
-        "Tüm finansal işlemleriniz ve güncel promosyonlarımız hakkında detaylı bilgi "
-        "almak için aşağıdaki menüyü kullanabilirsiniz."
+        "<b>Starzbet'e Hoş Geldiniz.</b>\n\n"
+        "Aşağıdaki menü üzerinden işlemlerinizi yapabilir, "
+        "size özel sunulan fırsatlara göz atabilirsiniz."
     )
     
-    # Callback geliyorsa eskiyi silip yeniyi temiz gönder
     if update.callback_query:
         await update.callback_query.message.delete()
 
@@ -84,19 +80,18 @@ async def buton_tiklama(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data
     await query.answer()
 
-    # Bilgi Havuzu
     info = {
-        "btn_dinamik": (MEDIA["DINAMIK_PAY"], "💳 <b>Dinamik Pay İle Anında Yatırım</b>\n\nSistemimizde Dinamik Pay altyapısı aktiftir. Herhangi bir aracı kurum bekleme süresi olmaksızın, dilediğiniz tutarda anlık yatırım yapabilirsiniz."),
-        "btn_slot": (MEDIA["SLOT_100"], "🎰 <b>%100 Slot Hoş Geldin Bonusu</b>\n\nİlk yatırımınıza özel %100 Slot yatırım bonusu ile kazancınızı katlayın. Profesyonel Slot deneyimi Starzbet kalitesiyle sizi bekliyor."),
-        "btn_spor": (MEDIA["SPOR_100"], "⚽ <b>%100 Spor Hoş Geldin Bonusu</b>\n\nYüksek oranlar ve geniş bahis bülteni ile ilk yatırımınızda bakiyenizi ikiye katlayın. Spor bahislerinde VIP avantajları aktif."),
-        "btn_kripto": (MEDIA["KRIPTO_100"], "🪙 <b>%100 Kripto Yatırım Bonusu</b>\n\nKripto yatırımlarınıza özel %100 bonus fırsatını kaçırmayın. Tamamen güvenli ve anonim yatırım imkanıyla sınırları zorlayın."),
-        "btn_kayip": (MEDIA["KAYIP_35"], "✨ <b>%35 VIP Kayıp Bonusu</b>\n\nCuma, Cumartesi ve Pazar günleri %35, hafta içi ise %30 oranında kayıp bonusu ile her zaman kazanma şansınız devam etmektedir."),
-        "btn_app": (MEDIA["MOBIL_APP"], "📱 <b>Kesintisiz Mobil Erişim</b>\n\nAndroid ve iOS cihazlar için özel geliştirilen Starzbet uygulamasını indirerek, adres güncellemelerinden etkilenmeden oyunlarınıza devam edebilirsiniz.")
+        "btn_dinamik": (MEDIA["DINAMIK_PAY"], "💳 <b>Dinamik Pay İle Yatırım</b>\n\nDinamik Pay ile bekleme süresi olmadan dilediğiniz tutarda anında yatırım yapabilirsiniz."),
+        "btn_slot": (MEDIA["SLOT_100"], "🎰 <b>Slot Hoş Geldin Bonusu</b>\n\nİlk yatırımınıza özel %100 Slot bonusu ile kazancınızı katlamaya başlayın."),
+        "btn_spor": (MEDIA["SPOR_100"], "⚽ <b>Spor Hoş Geldin Bonusu</b>\n\nSpor bahislerinde ilk yatırımınıza özel %100 bonus fırsatından yararlanın."),
+        "btn_kripto": (MEDIA["KRIPTO_100"], "🪙 <b>Kripto Yatırım Bonusu</b>\n\nKripto yatırımlarınıza özel %100 bonus avantajı ile Starzbet'te yerinizi alın."),
+        "btn_kayip": (MEDIA["KAYIP_35"], "✨ <b>Kayıp Bonusu</b>\n\nCuma, Cumartesi ve Pazar günleri %35, hafta içi ise %30 kayıp bonusu ile şansınız devam ediyor."),
+        "btn_app": (MEDIA["MOBIL_APP"], "📱 <b>Mobil Uygulama</b>\n\nStarzbet uygulamasını indirerek güncel adrese ihtiyaç duymadan kesintisiz erişim sağlayın.")
     }
 
     if data in info:
         gorsel, aciklama = info[data]
-        await query.message.delete() # Temiz bir geçiş için
+        await query.message.delete()
         if os.path.exists(gorsel):
             await context.bot.send_photo(chat_id=update.effective_chat.id, photo=open(gorsel, 'rb'), 
                                          caption=aciklama, reply_markup=detay_kb(), parse_mode=ParseMode.HTML)
@@ -106,7 +101,6 @@ async def buton_tiklama(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "btn_back":
         await start(update, context)
 
-# --- ANA ÇALIŞTIRICI ---
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     application = ApplicationBuilder().token(TOKEN).build()
@@ -114,18 +108,5 @@ if __name__ == '__main__':
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(buton_tiklama))
 
-    print("🚀 Starzbet VIP Otomasyon v4.0 Aktif!")
+    print("🚀 Starzbet Bot Aktif!")
     application.run_polling()
-
-# 📂 Mevcut klasör yolunu otomatik bulur
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-MEDIA = {
-    "ANA_MENU": os.path.join(BASE_DIR, "ana.jpg"),
-    "DINAMIK_PAY": os.path.join(BASE_DIR, "dinamik.jpg"),
-    "SLOT_100": os.path.join(BASE_DIR, "casinohosgelin.jpg"),
-    "SPOR_100": os.path.join(BASE_DIR, "sporhosgel).jpg"),
-    "KRIPTO_100": os.path.join(BASE_DIR, "kripto.jpg"),
-    "KAYIP_35": os.path.join(BASE_DIR, "35kayip.jpg"),
-    "MOBIL_APP": os.path.join(BASE_DIR, "uygulama.jpg")
-}
