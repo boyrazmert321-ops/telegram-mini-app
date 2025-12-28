@@ -116,3 +116,16 @@ if __name__ == '__main__':
 
     print("🚀 Starzbet VIP Otomasyon v4.0 Aktif!")
     application.run_polling()
+
+# 📂 Mevcut klasör yolunu otomatik bulur
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+MEDIA = {
+    "ANA_MENU": os.path.join(BASE_DIR, "ana.jpg"),
+    "DINAMIK_PAY": os.path.join(BASE_DIR, "dinamik.jpg"),
+    "SLOT_100": os.path.join(BASE_DIR, "casinohosgelin.jpg"),
+    "SPOR_100": os.path.join(BASE_DIR, "sporhosgel).jpg"),
+    "KRIPTO_100": os.path.join(BASE_DIR, "kripto.jpg"),
+    "KAYIP_35": os.path.join(BASE_DIR, "35kayip.jpg"),
+    "MOBIL_APP": os.path.join(BASE_DIR, "uygulama.jpg")
+}
