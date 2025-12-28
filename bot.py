@@ -17,7 +17,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandle
 MEDIA = {
     "ANA_MENU": "ana.jpg",        # Ana karşılama görseli
     "DINAMIK_PAY": "dinamik.jpg",  # Dinamik Pay bilgilendirme
-    "SLOT_100": "casinohosgeldin.jpg",      # Slot Hoş Geldin
+    "SLOT_100": "casinohosgelin.jpg",      # Slot Hoş Geldin
     "SPOR_100": "sporhosgel.jpg",      # Spor Hoş Geldin
     "KRIPTO_100": "kripto.jpg",  # Kripto Hoş Geldin
     "KAYIP_35": "35kayip.jpg",     # Kayıp Bonusu görseli
