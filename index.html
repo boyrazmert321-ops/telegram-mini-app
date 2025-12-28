@@ -3,53 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Starzbet Mini</title>
+    <title>Starzbet VIP Hub</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Poppins:wght@300;600&display=swap');
-        :root { --gold: #ffcc00; --dark: #050505; --neon: #00f2ff; }
+        :root { --gold: #ffcc00; --dark: #050505; --neon: #00f2ff; --glass: rgba(255, 255, 255, 0.05); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
         body { background: var(--dark); color: white; font-family: 'Poppins', sans-serif; margin: 0; overflow: hidden; height: 100vh; width: 100%; position: fixed; }
 
+        /* --- ŞOV ELEMENTLERİ --- */
         #splash { position: fixed; inset: 0; background: #000; z-index: 30000; display: flex; justify-content: center; align-items: center; animation: fadeOut 0.8s ease 2.5s forwards; }
         .splash-logo { font-family: 'Orbitron'; font-size: 32px; color: var(--gold); text-shadow: 0 0 20px var(--gold); animation: neonPulse 1.2s infinite alternate; }
+        
+        .toast { position: fixed; top: -60px; left: 50%; transform: translateX(-50%); background: var(--gold); color: black; padding: 10px 20px; border-radius: 30px; font-weight: bold; font-size: 11px; z-index: 50000; transition: top 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); box-shadow: 0 0 20px rgba(255, 204, 0, 0.5); white-space: nowrap; }
+
         @keyframes neonPulse { from { opacity: 0.4; transform: scale(0.9); } to { opacity: 1; transform: scale(1.1); } }
         @keyframes fadeOut { to { opacity: 0; visibility: hidden; } }
 
         #app { height: 100vh; display: flex; flex-direction: column; opacity: 0; animation: fadeIn 0.5s ease 3s forwards; }
         @keyframes fadeIn { to { opacity: 1; } }
 
-        .top-bar { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; background: #000; border-bottom: 1px solid #222; }
-        .stat-badge { border: 1px solid var(--gold); padding: 5px 12px; border-radius: 20px; color: var(--gold); font-family: 'Orbitron'; font-size: 11px; }
-        
-        .screen { flex-grow: 1; display: none; overflow-y: auto; padding: 20px; }
+        /* --- ÜST BAR (VIP UPDATE) --- */
+        .top-bar { padding: 15px 20px; background: #000; border-bottom: 1px solid #222; display: flex; flex-direction: column; gap: 8px; }
+        .stat-row { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        .stat-badge { border: 1px solid var(--gold); padding: 4px 10px; border-radius: 20px; color: var(--gold); font-family: 'Orbitron'; font-size: 10px; background: rgba(255, 204, 0, 0.05); }
+        .xp-container { width: 100%; height: 4px; background: #111; border-radius: 10px; overflow: hidden; }
+        #xp-bar { width: 0%; height: 100%; background: linear-gradient(90deg, var(--gold), #fff); transition: width 0.5s ease; box-shadow: 0 0 10px var(--gold); }
+
+        /* --- OYUN KARTLARI --- */
+        .screen { flex-grow: 1; display: none; overflow-y: auto; padding: 20px; padding-bottom: 100px; }
         .screen.active { display: block; }
-
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .card { background: #111; border-radius: 20px; padding: 25px; text-align: center; border: 1px solid #222; }
-        .card:active { transform: scale(0.92); border-color: var(--gold); }
-        .card i { font-size: 40px; display: block; margin-bottom: 10px; }
+        .card { background: linear-gradient(145deg, #111, #080808); border-radius: 24px; padding: 25px; text-align: center; border: 1px solid #1a1a1a; transition: all 0.2s ease; position: relative; overflow: hidden; }
+        .card::after { content: ''; position: absolute; inset: 0; background: linear-gradient(45deg, transparent, rgba(255,204,0,0.1), transparent); transform: translateX(-100%); transition: 0.5s; }
+        .card:active { transform: scale(0.95); border-color: var(--gold); }
+        .card:active::after { transform: translateX(100%); }
+        .card i { font-size: 40px; display: block; margin-bottom: 10px; filter: drop-shadow(0 0 10px rgba(255,204,0,0.3)); }
+        .card span { font-size: 13px; font-weight: 600; letter-spacing: 1px; color: #eee; }
 
-        .nav { position: fixed; bottom: 0; width: 100%; height: 75px; background: #000; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #222; padding-bottom: 10px; }
-        .nav-btn { background: none; border: none; color: #555; font-size: 11px; text-align: center; }
-        .nav-btn.active { color: var(--gold); }
+        /* --- NAVİGASYON --- */
+        .nav { position: fixed; bottom: 0; width: 100%; height: 80px; background: rgba(0,0,0,0.9); backdrop-filter: blur(10px); display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #222; padding-bottom: 15px; z-index: 1000; }
+        .nav-btn { background: none; border: none; color: #555; font-size: 11px; font-family: 'Orbitron'; transition: 0.3s; }
+        .nav-btn.active { color: var(--gold); text-shadow: 0 0 10px var(--gold); }
 
         #stage { position: fixed; inset: 0; background: #000; z-index: 9999; display: none; flex-direction: column; }
-        .canvas-container { flex-grow: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; }
-        canvas { background: #000; border: 1px solid #222; }
+        canvas { background: #000; border: 1px solid #222; box-shadow: 0 0 50px rgba(255,204,0,0.1); }
     </style>
 </head>
 <body>
 
-    <div id="splash"><div class="splash-logo">STARZBET MİNİ</div></div>
+    <div id="toast-box" class="toast">🔥 SİSTEM AKTİF!</div>
+    <div id="splash"><div class="splash-logo">STARZBET VIP</div></div>
 
     <div id="app">
         <div class="top-bar">
-            <div id="u-name" style="font-family:'Orbitron'; color:var(--gold);">OYUNCU</div>
-            <div class="stat-badge">PUAN: <span id="total-val">0</span></div>
+            <div class="stat-row">
+                <div id="u-name" style="font-family:'Orbitron'; color:var(--gold); font-size: 14px;">OYUNCU</div>
+                <div class="stat-badge">VIP LEVEL: <span id="vip-lvl">1</span></div>
+            </div>
+            <div class="xp-container"><div id="xp-bar"></div></div>
+            <div class="stat-row" style="margin-top: 5px;">
+                <span style="font-size: 9px; color: #555;">TOPLAM PUAN</span>
+                <span id="total-val" style="font-family:'Orbitron'; color:var(--gold); font-size: 12px;">0</span>
+            </div>
         </div>
 
         <div id="home" class="screen active">
+            <p style="text-align:center; font-size:10px; color:#444; margin-bottom:15px;">💡 ŞANSINI SEÇMEK İÇİN TELEFONU SALLA!</p>
             <div class="grid">
                 <div class="card" onclick="launch('tower')"><i>🏗️</i><span>KULE</span></div>
                 <div class="card" onclick="launch('tetris')"><i>🧩</i><span>TETRIS</span></div>
@@ -59,7 +79,7 @@
         </div>
 
         <div id="ranks" class="screen">
-            <h3 style="color:var(--gold); font-family:'Orbitron'; text-align:center;">🏆 LİDERLER</h3>
+            <h3 style="color:var(--gold); font-family:'Orbitron'; text-align:center;">🏆 VIP LİDERLER</h3>
             <div id="leader-list"></div>
         </div>
 
@@ -70,11 +90,11 @@
     </div>
 
     <div id="stage">
-        <div style="padding:15px; display:flex; justify-content:space-between; align-items:center; background:#000;">
-            <button onclick="quitGame()" style="background:#ff3333; color:white; border:none; padding:8px 15px; border-radius:10px;">KAPAT</button>
-            <div id="game-ui" style="font-family:'Orbitron'; color:var(--gold); font-size:18px;">0</div>
+        <div style="padding:15px; display:flex; justify-content:space-between; align-items:center; background:#000; border-bottom:1px solid #222;">
+            <button onclick="quitGame()" style="background:#ff3333; color:white; border:none; padding:8px 18px; border-radius:12px; font-weight:bold; font-size:12px;">KAPAT</button>
+            <div id="game-ui" style="font-family:'Orbitron'; color:var(--gold); font-size:20px; text-shadow:0 0 10px var(--gold);">0</div>
         </div>
-        <div class="canvas-container"><canvas id="cvs"></canvas></div>
+        <div style="flex-grow:1; display:flex; justify-content:center; align-items:center; overflow:hidden;"><canvas id="cvs"></canvas></div>
     </div>
 
     <script type="module">
@@ -82,22 +102,69 @@
         import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         const firebaseConfig = { apiKey: "AIzaSyB4JIv0kny1PG_d2bsbGXxt0eQbxrzHWo4", authDomain: "starzbet-score.firebaseapp.com", projectId: "starzbet-score", storageBucket: "starzbet-score.firebasestorage.app", messagingSenderId: "100283892830", appId: "1:100283892830:web:d970d37961616762ef60cf" };
         const app = initializeApp(firebaseConfig); const db = getFirestore(app);
-        window.saveGlobal = async (s) => { try { await addDoc(collection(db, "scores"), { name: (window.Telegram.WebApp.initDataUnsafe?.user?.first_name || "MERT").toUpperCase(), points: s, timestamp: serverTimestamp() }); } catch(e){} };
+        
+        window.saveGlobal = async (s) => { 
+            try { 
+                await addDoc(collection(db, "scores"), { name: (window.Telegram.WebApp.initDataUnsafe?.user?.first_name || "MERT").toUpperCase(), points: s, timestamp: serverTimestamp() }); 
+                updateXP(s);
+                showToast(`SKOR KAYDEDİLDİ: ${s} PUAN!`);
+            } catch(e){} 
+        };
+
         window.loadLeaders = async () => {
             const list = document.getElementById('leader-list');
-            list.innerHTML = "<p style='text-align:center;'>Yükleniyor...</p>";
+            list.innerHTML = "<p style='text-align:center;'>Veriler Alınıyor...</p>";
             const q = query(collection(db, "scores"), orderBy("points", "desc"), limit(10));
             const snap = await getDocs(q); list.innerHTML = "";
-            snap.forEach((doc, i) => { const d = doc.data(); list.innerHTML += `<div style="background:#111; padding:12px; border-radius:12px; margin-bottom:10px; display:flex; justify-content:space-between; border-left:4px solid var(--gold);"><span>#${i+1} ${d.name}</span><span>${d.points}</span></div>`; });
+            snap.forEach((doc, i) => { const d = doc.data(); list.innerHTML += `<div style="background:linear-gradient(90deg, #111, #050505); padding:15px; border-radius:15px; margin-bottom:10px; display:flex; justify-content:space-between; border-left:4px solid ${i<3?'var(--gold)':'#333'};"><span>#${i+1} ${d.name}</span><span style="color:var(--gold); font-family:'Orbitron';">${d.points}</span></div>`; });
         };
     </script>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        document.getElementById('u-name').innerText = (tg.initDataUnsafe?.user?.first_name || "MERT").toUpperCase();
+        tg.enableClosingConfirmation();
+        const userName = (tg.initDataUnsafe?.user?.first_name || "MERT").toUpperCase();
+        document.getElementById('u-name').innerText = userName;
+
+        // --- ŞOV FONKSİYONLARI ---
+        function showToast(msg) {
+            const t = document.getElementById('toast-box');
+            t.innerText = msg;
+            t.style.top = '20px';
+            setTimeout(() => t.style.top = '-60px', 3000);
+        }
+
+        function updateXP(points) {
+            let currentXP = parseInt(document.getElementById('total-val').innerText) + points;
+            document.getElementById('total-val').innerText = currentXP;
+            let level = Math.floor(currentXP / 1000) + 1;
+            let progress = (currentXP % 1000) / 10;
+            document.getElementById('vip-lvl').innerText = level;
+            document.getElementById('xp-bar').style.width = progress + '%';
+        }
+
+        // --- SHAKE TO WIN (SALLA VE OYNA) ---
+        let lastShake = 0;
+        window.addEventListener('devicemotion', (e) => {
+            let acc = e.accelerationIncludingGravity;
+            let curTime = Date.now();
+            if (active) return;
+            if ((curTime - lastShake) > 2000) {
+                let diff = Math.abs(acc.x + acc.y + acc.z);
+                if (diff > 25) {
+                    lastShake = curTime;
+                    tg.HapticFeedback.notificationOccurred('success');
+                    const gms = ['tower', 'tetris', 'snake', 'memory'];
+                    const pick = gms[Math.floor(Math.random()*gms.length)];
+                    showToast("🎲 ŞANS RADARI: " + pick.toUpperCase());
+                    setTimeout(() => launch(pick), 1000);
+                }
+            }
+        });
 
         function tab(id) {
+            tg.HapticFeedback.impactOccurred('light');
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             document.getElementById(id).classList.add('active');
@@ -110,16 +177,19 @@
         const ctx = cvs.getContext('2d');
 
         function launch(g) {
+            tg.HapticFeedback.impactOccurred('medium');
             document.getElementById('stage').style.display = 'flex';
             cvs.width = Math.min(window.innerWidth - 40, 320);
             cvs.height = window.innerHeight - 150;
             score = 0; active = true;
+            document.getElementById('game-ui').innerText = "0";
             if(g==='tower') runTower();
             if(g==='snake') runSnake();
             if(g==='memory') runMemory();
             if(g==='tetris') runTetris();
         }
 
+        // --- OYUN MOTORLARI (STABILIZE EDILDI) ---
         function runTower() {
             let bw = cvs.width * 0.4, blocks = [{x: cvs.width/2 - bw/2, y: cvs.height-40, w: bw}];
             let cur = {x: 0, y: cvs.height-80, w: bw, v: 4.5}, camY = 0;
@@ -133,13 +203,14 @@
             }
             run();
             cvs.onclick = () => {
+                tg.HapticFeedback.impactOccurred('light');
                 let p = blocks[blocks.length-1]; let d = cur.x - p.x;
                 if(Math.abs(d) >= cur.w) return end();
                 cur.w -= Math.abs(d); if(d<0) cur.x = p.x;
-                score++; document.getElementById('game-ui').innerText = score;
+                score += 10; document.getElementById('game-ui').innerText = score;
                 blocks.push({x: cur.x, y: cur.y, w: cur.w});
                 cur.y -= 40; if(blocks.length > 5) camY += 40;
-                cur.v += (cur.v > 0 ? 0.35 : -0.35);
+                cur.v += (cur.v > 0 ? 0.4 : -0.4);
             };
         }
 
@@ -149,7 +220,11 @@
                 if(!active) return; d = nD;
                 let head = {x: s[0].x+d.x, y: s[0].y+d.y};
                 if(head.x<0||head.x>=Math.floor(cvs.width/sz)||head.y<0||head.y>=Math.floor(cvs.height/sz)||s.some(p=>p.x==head.x&&p.y==head.y)) return end();
-                if(head.x==f.x && head.y==f.y) { score+=50; spd=Math.max(45,spd-6); f={x:Math.floor(Math.random()*(cvs.width/sz-1)), y:Math.floor(Math.random()*(cvs.height/sz-1))}; } else s.pop();
+                if(head.x==f.x && head.y==f.y) { 
+                    tg.HapticFeedback.notificationOccurred('success');
+                    score+=50; spd=Math.max(50,spd-5); 
+                    f={x:Math.floor(Math.random()*(cvs.width/sz-1)), y:Math.floor(Math.random()*(cvs.height/sz-1))}; 
+                } else s.pop();
                 s.unshift(head); ctx.clearRect(0,0,cvs.width,cvs.height);
                 ctx.fillStyle='#ff3333'; ctx.beginPath(); ctx.arc(f.x*sz+sz/2, f.y*sz+sz/2, 7, 0, 7); ctx.fill();
                 s.forEach((p,i)=> { ctx.fillStyle=i==0?'#00f2ff':'rgba(0,242,255,0.4)'; ctx.beginPath(); ctx.roundRect(p.x*sz,p.y*sz,sz-2,sz-2,5); ctx.fill(); });
@@ -157,29 +232,19 @@
                 setTimeout(move, spd);
             }
             move();
-            cvs.onclick = () => { let x = nD.x; nD.x = -nD.y; nD.y = x; };
+            cvs.onclick = () => { tg.HapticFeedback.impactOccurred('light'); let x = nD.x; nD.x = -nD.y; nD.y = x; };
         }
 
         function runTetris() {
             const sz = 20, col = Math.floor(cvs.width/sz), row = Math.floor(cvs.height/sz);
-            const shapes = [
-                { s: [[1,1,1,1]], c: '#00f2ff' }, 
-                { s: [[1,1],[1,1]], c: '#ffcc00' }, 
-                { s: [[0,1,0],[1,1,1]], c: '#a020f0' }, 
-                { s: [[1,0,0],[1,1,1]], c: '#ffa500' }, 
-                { s: [[0,0,1],[1,1,1]], c: '#0000ff' }, 
-                { s: [[0,1,1],[1,1,0]], c: '#00ff00' }, 
-                { s: [[1,1,0],[0,1,1]], c: '#ff0000' }
-            ];
+            const shapes = [ { s: [[1,1,1,1]], c: '#00f2ff' }, { s: [[1,1],[1,1]], c: '#ffcc00' }, { s: [[0,1,0],[1,1,1]], c: '#a020f0' } ];
             let board = Array(row).fill().map(()=>Array(col).fill(0));
-            let cur, pos, dropCounter = 0, dropInterval = 400; // BAŞLANGIÇ HIZI 800'DEN 400'E ÇEKİLDİ
-
+            let cur, pos, dropCounter = 0, dropInterval = 400;
             function resetPiece() {
                 const r = shapes[Math.floor(Math.random()*shapes.length)];
-                cur = r.s; pos = { x: Math.floor(col/2) - 1, y: 0 };
+                cur = r.s; pos = { x: Math.floor(col/2)-1, y: 0 };
                 if (collide()) return end();
             }
-
             function collide() {
                 for(let y=0; y<cur.length; y++) {
                     for(let x=0; x<cur[y].length; x++) {
@@ -188,47 +253,25 @@
                 }
                 return false;
             }
-
-            function merge() {
-                cur.forEach((r,y)=>r.forEach((v,x)=>{ if(v) board[pos.y+y][pos.x+x] = shapes.find(s=>JSON.stringify(s.s)===JSON.stringify(cur))?.c || '#fff'; }));
-            }
-
-            function rotate(matrix) {
-                const rotated = matrix[0].map((_, i) => matrix.map(row => row[i]).reverse());
-                const prev = cur; cur = rotated;
-                if(collide()) cur = prev;
-            }
-
-            function sweep() {
-                outer: for(let y=row-1; y>=0; y--) {
-                    for(let x=0; x<col; x++) if(!board[y][x]) continue outer;
-                    const r = board.splice(y,1)[0].fill(0);
-                    board.unshift(r); score += 100; y++;
-                    dropInterval = Math.max(80, dropInterval - 40); // HIZLANMA KAT SAYISI ARTIRILDI
-                }
-            }
-
-            function update(time = 0) {
+            function merge() { cur.forEach((r,y)=>r.forEach((v,x)=>{ if(v) board[pos.y+y][pos.x+x] = '#ffcc00'; })); }
+            function sweep() { outer: for(let y=row-1; y>=0; y--) { for(let x=0; x<col; x++) if(!board[y][x]) continue outer; board.splice(y,1); board.unshift(Array(col).fill(0)); score += 100; tg.HapticFeedback.notificationOccurred('warning'); y++; } }
+            function update() {
                 if(!active) return;
                 dropCounter += 16;
-                if(dropCounter > dropInterval) {
-                    pos.y++; if(collide()) { pos.y--; merge(); sweep(); resetPiece(); }
-                    dropCounter = 0;
-                }
+                if(dropCounter > dropInterval) { pos.y++; if(collide()){pos.y--; merge(); sweep(); resetPiece();} dropCounter=0; }
                 ctx.clearRect(0,0,cvs.width,cvs.height);
                 board.forEach((r,y)=>r.forEach((v,x)=>{ if(v){ctx.fillStyle=v; ctx.fillRect(x*sz,y*sz,sz-1,sz-1);} }));
                 cur.forEach((r,y)=>r.forEach((v,x)=>{ if(v){ctx.fillStyle='#fff'; ctx.fillRect((pos.x+x)*sz, (pos.y+y)*sz, sz-1, sz-1);} }));
                 document.getElementById('game-ui').innerText = score;
                 loop = requestAnimationFrame(update);
             }
-
             resetPiece(); update();
             cvs.onclick = (e) => {
-                const rect = cvs.getBoundingClientRect();
-                const x = e.clientX - rect.left;
+                tg.HapticFeedback.impactOccurred('light');
+                const x = e.clientX - cvs.getBoundingClientRect().left;
                 if(x < cvs.width/3) { pos.x--; if(collide()) pos.x++; }
                 else if(x > (cvs.width/3)*2) { pos.x++; if(collide()) pos.x--; }
-                else rotate(cur);
+                else { const r = cur[0].map((_,i)=>cur.map(row=>row[i]).reverse()); const p=cur; cur=r; if(collide())cur=p; }
             };
         }
 
@@ -238,11 +281,11 @@
                 if(!active) return; ctx.clearRect(0,0,cvs.width,cvs.height);
                 cards.forEach((c, i) => {
                     let cw = (cvs.width-60)/3, ch = (cvs.height-120)/4, x = (i%3)*(cw+10)+15, y = Math.floor(i/3)*(ch+10)+20;
-                    ctx.fillStyle = (c.s==1||c.v=='V') ? '#111':'#ffcc00'; 
-                    ctx.beginPath(); ctx.roundRect(x,y,cw,ch,10); ctx.fill();
-                    if(c.s==1||c.v=='V') { ctx.font="30px Arial"; ctx.textAlign="center"; ctx.fillText(c.v=='V'?'⭐':c.v, x+cw/2, y+ch/2+10); }
+                    ctx.fillStyle = (c.s==1||c.v=='V') ? '#111':'#ffcc00'; 
+                    ctx.beginPath(); ctx.roundRect(x,y,cw,ch,12); ctx.fill();
+                    if(c.s==1||c.v=='V') { ctx.font="28px Arial"; ctx.textAlign="center"; ctx.fillText(c.v=='V'?'⭐':c.v, x+cw/2, y+ch/2+10); }
                 });
-                if(done==6) { score=1000; end(); }
+                if(done==6) { score=1000; setTimeout(end, 500); }
                 loop = requestAnimationFrame(run);
             }
             run();
@@ -250,10 +293,11 @@
                 let r = cvs.getBoundingClientRect(), mx = e.clientX-r.left, my = e.clientY-r.top;
                 cards.forEach((c, i) => {
                     let cw = (cvs.width-60)/3, ch = (cvs.height-120)/4, x = (i%3)*(cw+10)+15, y = Math.floor(i/3)*(ch+10)+20;
-                    if(mx>x && mx<x+90 && my>y && my<y+90 && c.v!='V' && flip.length<2 && !flip.includes(i)) {
+                    if(mx>x && mx<x+cw && my>y && my<y+ch && c.v!='V' && flip.length<2 && !flip.includes(i)) {
+                        tg.HapticFeedback.impactOccurred('light');
                         c.s=1; flip.push(i);
                         if(flip.length==2) {
-                            if(cards[flip[0]].v == cards[flip[1]].v) { setTimeout(()=>{cards[flip[0]].v=cards[flip[1]].v='V'; done++; flip=[];}, 400); }
+                            if(cards[flip[0]].v == cards[flip[1]].v) { tg.HapticFeedback.notificationOccurred('success'); setTimeout(()=>{cards[flip[0]].v=cards[flip[1]].v='V'; done++; flip=[];}, 400); }
                             else { setTimeout(()=>{cards[flip[0]].s=cards[flip[1]].s=0; flip=[];}, 700); }
                         }
                     }
@@ -261,7 +305,13 @@
             };
         }
 
-        async function end() { active=false; cancelAnimationFrame(loop); if(window.saveGlobal) await window.saveGlobal(score); alert("SKOR: " + score); quitGame(); }
+        async function end() { 
+            active=false; 
+            cancelAnimationFrame(loop); 
+            tg.HapticFeedback.notificationOccurred('error');
+            if(window.saveGlobal) await window.saveGlobal(score); 
+            quitGame(); 
+        }
         function quitGame() { active = false; document.getElementById('stage').style.display = 'none'; }
     </script>
 </body>
