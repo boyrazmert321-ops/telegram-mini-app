@@ -27,6 +27,32 @@ AI_TALIMATI = (
     "Sadece şu bilgilere sadık kal: %35 Hafta sonu kayıp bonusu, %30 hafta içi kayıp bonusu. "
     "Dinamik Pay ile anında yatırım. Payfix yok. Slot, Spor, Kripto %100 Hoş Geldin bonusları var."
 )
+async def ai_asistan(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.text: return
+    
+    user_msg = update.message.text
+    prompt = f"{AI_TALIMATI}\nKullanıcı: {user_msg}"
+    
+    try:
+        # Güvenlik ayarları (Bahis kelimeleri için)
+        safety = [
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
+        ]
+        
+        response = model.generate_content(prompt, safety_settings=safety)
+        
+        if response.text:
+            await update.message.reply_text(response.text, parse_mode=ParseMode.HTML, reply_markup=ana_menu_kb())
+        else:
+            await update.message.reply_text("🤖 AI boş cevap döndürdü.", reply_markup=ana_menu_kb())
+            
+    except Exception as e:
+        # İŞTE BURASI KRİTİK: Hata neyse onu ekrana yazdırıyoruz
+        hata_detayi = str(e)
+        await update.message.reply_text(f"❌ AI Hatası: {hata_detayi}", reply_markup=ana_menu_kb())
 
 # --- 3. GÖRSEL YÖNETİCİSİ ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
