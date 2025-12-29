@@ -27,32 +27,6 @@ AI_TALIMATI = (
     "Sadece şu bilgilere sadık kal: %35 Hafta sonu kayıp bonusu, %30 hafta içi kayıp bonusu. "
     "Dinamik Pay ile anında yatırım. Payfix yok. Slot, Spor, Kripto %100 Hoş Geldin bonusları var."
 )
-async def ai_asistan(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message or not update.message.text: return
-    
-    user_msg = update.message.text
-    prompt = f"{AI_TALIMATI}\nKullanıcı: {user_msg}"
-    
-    try:
-        # Güvenlik ayarları (Bahis kelimeleri için)
-        safety = [
-            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
-        ]
-        
-        response = model.generate_content(prompt, safety_settings=safety)
-        
-        if response.text:
-            await update.message.reply_text(response.text, parse_mode=ParseMode.HTML, reply_markup=ana_menu_kb())
-        else:
-            await update.message.reply_text("🤖 AI boş cevap döndürdü.", reply_markup=ana_menu_kb())
-            
-    except Exception as e:
-        # İŞTE BURASI KRİTİK: Hata neyse onu ekrana yazdırıyoruz
-        hata_detayi = str(e)
-        await update.message.reply_text(f"❌ AI Hatası: {hata_detayi}", reply_markup=ana_menu_kb())
 
 # --- 3. GÖRSEL YÖNETİCİSİ ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -104,7 +78,6 @@ async def ai_asistan(update: Update, context: ContextTypes.DEFAULT_TYPE):
     prompt = f"{AI_TALIMATI}\nKullanıcı: {update.message.text}"
     
     try:
-        # GÜVENLİK FİLTRELERİNİ KALDIRAN KRİTİK AYAR
         safety_settings = [
             {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
             {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
@@ -117,21 +90,22 @@ async def ai_asistan(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if response.text:
             await update.message.reply_text(response.text, parse_mode=ParseMode.HTML, reply_markup=ana_menu_kb())
         else:
-            await update.message.reply_text("Sistemimiz şu an yanıt oluşturamıyor, lütfen butonları kullanın.", reply_markup=ana_menu_kb())
+            await update.message.reply_text("🤖 AI boş cevap döndürdü.", reply_markup=ana_menu_kb())
             
     except Exception as e:
-        print(f"AI Hatası: {e}")
-        await update.message.reply_text("Şu an yoğunluk var, lütfen butonları kullanın.", reply_markup=ana_menu_kb())
+        # Hatanın ne olduğunu direkt bot üzerinden sana söyleyecek
+        await update.message.reply_text(f"❌ AI Hatası: {str(e)}", reply_markup=ana_menu_kb())
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    target = update.message if update.message else update.callback_query.message
-    text = "<b>Starzbet'e Hoş Geldiniz.</b>\n\nİşlemleriniz için menüyü kullanabilir veya soru sorabilirsiniz."
+    chat_id = update.effective_chat.id
+    text = "<b>Starzbet'e Hoş Geldiniz.</b>\n\nİşlemleriniz için aşağıdaki menüyü kullanabilir veya bana soru sorabilirsiniz."
+    
     if update.callback_query: await update.callback_query.message.delete()
 
     if os.path.exists(MEDIA["ANA_MENU"]):
-        await context.bot.send_photo(chat_id=update.effective_chat.id, photo=open(MEDIA["ANA_MENU"], 'rb'), caption=text, reply_markup=ana_menu_kb(), parse_mode=ParseMode.HTML)
+        await context.bot.send_photo(chat_id=chat_id, photo=open(MEDIA["ANA_MENU"], 'rb'), caption=text, reply_markup=ana_menu_kb(), parse_mode=ParseMode.HTML)
     else:
-        await context.bot.send_message(chat_id=update.effective_chat.id, text=text, reply_markup=ana_menu_kb(), parse_mode=ParseMode.HTML)
+        await context.bot.send_message(chat_id=chat_id, text=text, reply_markup=ana_menu_kb(), parse_mode=ParseMode.HTML)
 
 async def buton_tiklama(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -154,11 +128,16 @@ async def buton_tiklama(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "btn_back":
         await start(update, context)
 
-# --- 7. ÇALIŞTIRICI ---
+# --- 7. ÇALIŞTIRICI (v20 STANDARTLARINDA) ---
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
+    
+    # Hata veren Updater yerine ApplicationBuilder kullanıyoruz
     application = ApplicationBuilder().token(TOKEN).build()
+
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(buton_tiklama))
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), ai_asistan))
+
+    print("🚀 Starzbet Botu Aktif Ediliyor...")
     application.run_polling(drop_pending_updates=True)
