@@ -4,13 +4,32 @@ import asyncio
 import http.server
 import socketserver
 import threading
+import google.generativeai as genai
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.constants import ParseMode
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
-# --- GÖRSEL YOLLARI ---
+# --- YAPAY ZEKA AYARI ---
+# Buraya Google'dan aldığın ücretsiz API KEY'i yaz
+GEMINI_API_KEY = "BURAYA_GEMINI_API_KEYINI_YAZ"
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel('gemini-pro')
+
+# AI'ya Starzbet kurallarını ve kişiliğini öğretiyoruz (Prompt Engineering)
+AI_TALIMATI = (
+    "Sen Starzbet bahis sitesinin kurumsal ve yardımsever müşteri asistanısın. "
+    "Asla 'kanka' gibi samimi ifadeler kullanma, profesyonel ve 'Siz' odaklı konuş. "
+    "Starzbet hakkında şu bilgileri bilmelisin: "
+    "1- Yatırımlarda Dinamik Pay ön plandadır ve anında işlem yapılır. "
+    "2- Cuma, Cumartesi ve Pazar günleri %35 Kayıp Bonusu verilir. Hafta içi %30'dur. "
+    "3- Slot, Spor ve Kripto için %100 Hoş Geldin bonusları vardır. "
+    "4- Payfix sistemimizde yoktur, Dinamik Pay kullanılmalıdır. "
+    "5- Çekim süreleri hakkında kesin bilgi verme, 'En kısa sürede' de. "
+    "Cevapların kısa, öz ve her zaman siteye yönlendirici olsun."
+)
+
+# --- GÖRSEL VE LİNK AYARLARI ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
 MEDIA = {
     "ANA_MENU": os.path.join(BASE_DIR, "ana.jpg"),
     "DINAMIK_PAY": os.path.join(BASE_DIR, "dinamik.jpg"),
@@ -21,14 +40,13 @@ MEDIA = {
     "MOBIL_APP": os.path.join(BASE_DIR, "uygulama.jpg")
 }
 
-# --- AYARLAR ---
 TOKEN = "8031564377:AAHjJXBQ-b6f0BnKdbf6T7iwUjs1fCA7dW0"
 LINK_GIRIS = "https://cutt.ly/drVOi2EN"
-LINK_BONUSLAR = "https://starzbet422.com/tr-tr/info/promos" # Direkt Bonuslar sayfası
+LINK_BONUSLAR = "https://starzbet422.com/tr-tr/info/promos"
 LINK_CANLI_DESTEK = "https://service.3kanumaigc.com/chatwindow.aspx?siteId=90005302&planId=1b050682-cde5-4176-8236-3bb94c891197#"
 LINK_MINI_APP = "https://telegram-mini-app-umber-chi.vercel.app"
 
-# --- RENDER İÇİN PORT AÇMA ---
+# --- RENDER SAHTE SUNUCU ---
 def run_dummy_server():
     PORT = int(os.environ.get("PORT", 8080))
     handler = http.server.SimpleHTTPRequestHandler
@@ -38,7 +56,7 @@ def run_dummy_server():
     except Exception: pass
 threading.Thread(target=run_dummy_server, daemon=True).start()
 
-# --- BUTONLAR ---
+# --- KLAVYELER ---
 def ana_menu_kb():
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("🎰 STARZBET MİNİ APP", web_app=WebAppInfo(url=LINK_MINI_APP))],
@@ -53,30 +71,31 @@ def ana_menu_kb():
     ])
 
 def detay_kb(bonus_mu=False):
-    # Eğer bonus tanıtımıysa butonu bonuslar sayfasına yönlendiriyoruz
     url_target = LINK_BONUSLAR if bonus_mu else LINK_GIRIS
     text_target = "🎁 BONUSLARI İNCELE" if bonus_mu else "🌐 SİTEYE GİT"
-    
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton(text_target, url=url_target)],
-        [InlineKeyboardButton("⬅️ GERİ DÖN", callback_data="btn_back")]
-    ])
+    return InlineKeyboardMarkup([[InlineKeyboardButton(text_target, url=url_target)], [InlineKeyboardButton("⬅️ GERİ DÖN", callback_data="btn_back")]])
 
-# --- FONKSİYONLAR ---
+# --- YAPAY ZEKA CEVAP FONKSİYONU ---
+async def ai_cevap_ver(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_msg = update.message.text
+    # Gemini'ye gönderilecek mesajı hazırlıyoruz
+    prompt = f"{AI_TALIMATI}\n\nKullanıcı Sorusu: {user_msg}\nCevap:"
+    
+    try:
+        response = model.generate_content(prompt)
+        await update.message.reply_text(response.text, parse_mode=ParseMode.HTML, reply_markup=ana_menu_kb())
+    except Exception as e:
+        await update.message.reply_text("Sistemimizde kısa süreli bir yoğunluk yaşanıyor, lütfen tekrar deneyiniz.", reply_markup=ana_menu_kb())
+
+# --- COMMANDS ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
-    text = (
-        "<b>Starzbet'e Hoş Geldiniz.</b>\n\n"
-        "Aşağıdaki menü üzerinden işlemlerinizi yapabilir, "
-        "size özel sunulan fırsatlara göz atabilirsiniz."
-    )
+    text = "<b>Starzbet'e Hoş Geldiniz.</b>\n\nİşlemleriniz için aşağıdaki menüyü kullanabilir veya merak ettiğiniz konuları buraya yazarak bana sorabilirsiniz."
     
-    if update.callback_query:
-        await update.callback_query.message.delete()
+    if update.callback_query: await update.callback_query.message.delete()
 
     if os.path.exists(MEDIA["ANA_MENU"]):
-        await context.bot.send_photo(chat_id=chat_id, photo=open(MEDIA["ANA_MENU"], 'rb'), 
-                                     caption=text, reply_markup=ana_menu_kb(), parse_mode=ParseMode.HTML)
+        await context.bot.send_photo(chat_id=chat_id, photo=open(MEDIA["ANA_MENU"], 'rb'), caption=text, reply_markup=ana_menu_kb(), parse_mode=ParseMode.HTML)
     else:
         await context.bot.send_message(chat_id=chat_id, text=text, reply_markup=ana_menu_kb(), parse_mode=ParseMode.HTML)
 
@@ -85,68 +104,32 @@ async def buton_tiklama(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = query.data
     await query.answer()
 
-    # Bilgilendirme ve Bonus içerikleri
-    # 'is_bonus': True olanlarda buton direkt promosyonlar sayfasına gider
     info = {
-        "btn_dinamik": {
-            "media": MEDIA["DINAMIK_PAY"], 
-            "text": "💳 <b>Dinamik Pay İle Yatırım</b>\n\nDinamik Pay ile bekleme süresi olmadan dilediğiniz tutarda anında yatırım yapabilirsiniz.",
-            "is_bonus": False
-        },
-        "btn_slot": {
-            "media": MEDIA["SLOT_100"], 
-            "text": "🎰 <b>Slot Hoş Geldin Bonusu</b>\n\nİlk yatırımınıza özel %100 Slot bonusu ile kazancınızı katlamaya başlayın.",
-            "is_bonus": True
-        },
-        "btn_spor": {
-            "media": MEDIA["SPOR_100"], 
-            "text": "⚽ <b>Spor Hoş Geldin Bonusu</b>\n\nSpor bahislerinde ilk yatırımınıza özel %100 bonus fırsatından yararlanın.",
-            "is_bonus": True
-        },
-        "btn_kripto": {
-            "media": MEDIA["KRIPTO_100"], 
-            "text": "🪙 <b>Kripto Yatırım Bonusu</b>\n\nKripto yatırımlarınıza özel %100 bonus avantajı ile Starzbet'te yerinizi alın.",
-            "is_bonus": True
-        },
-        "btn_kayip": {
-            "media": MEDIA["KAYIP_35"], 
-            "text": "✨ <b>Kayıp Bonusu</b>\n\nCuma, Cumartesi ve Pazar günleri %35, hafta içi ise %30 kayıp bonusu ile şansınız devam ediyor.",
-            "is_bonus": True
-        },
-        "btn_app": {
-            "media": MEDIA["MOBIL_APP"], 
-            "text": "📱 <b>Mobil Uygulama</b>\n\nStarzbet uygulamasını indirerek güncel adrese ihtiyaç duymadan kesintisiz erişim sağlayın.",
-            "is_bonus": False
-        }
+        "btn_dinamik": (MEDIA["DINAMIK_PAY"], "💳 <b>Dinamik Pay İle Yatırım</b>\n\nDinamik Pay ile bekleme süresi olmadan dilediğiniz tutarda anında yatırım yapabilirsiniz.", False),
+        "btn_slot": (MEDIA["SLOT_100"], "🎰 <b>Slot Hoş Geldin Bonusu</b>\n\nİlk yatırımınıza özel %100 Slot bonusu ile kazancınızı katlamaya başlayın.", True),
+        "btn_spor": (MEDIA["SPOR_100"], "⚽ <b>Spor Hoş Geldin Bonusu</b>\n\nSpor bahislerinde ilk yatırımınıza özel %100 bonus fırsatından yararlanın.", True),
+        "btn_kripto": (MEDIA["KRIPTO_100"], "🪙 <b>Kripto Yatırım Bonusu</b>\n\nKripto yatırımlarınıza özel %100 bonus avantajı ile Starzbet'te yerinizi alın.", True),
+        "btn_kayip": (MEDIA["KAYIP_35"], "✨ <b>Kayıp Bonusu</b>\n\nCuma, Cumartesi ve Pazar günleri %35, hafta içi ise %30 kayıp bonusu ile şansınız devam ediyor.", True),
+        "btn_app": (MEDIA["MOBIL_APP"], "📱 <b>Mobil Uygulama</b>\n\nStarzbet uygulamasını indirerek güncel adrese ihtiyaç duymadan kesintisiz erişim sağlayın.", False)
     }
 
     if data in info:
-        item = info[data]
+        gorsel, aciklama, is_bonus = info[data]
         await query.message.delete()
-        if os.path.exists(item["media"]):
-            await context.bot.send_photo(
-                chat_id=update.effective_chat.id, 
-                photo=open(item["media"], 'rb'), 
-                caption=item["text"], 
-                reply_markup=detay_kb(bonus_mu=item["is_bonus"]), 
-                parse_mode=ParseMode.HTML
-            )
+        if os.path.exists(gorsel):
+            await context.bot.send_photo(chat_id=update.effective_chat.id, photo=open(gorsel, 'rb'), caption=aciklama, reply_markup=detay_kb(bonus_mu=is_bonus), parse_mode=ParseMode.HTML)
         else:
-            await context.bot.send_message(
-                chat_id=update.effective_chat.id, 
-                text=item["text"], 
-                reply_markup=detay_kb(bonus_mu=item["is_bonus"]), 
-                parse_mode=ParseMode.HTML
-            )
+            await context.bot.send_message(chat_id=update.effective_chat.id, text=aciklama, reply_markup=detay_kb(bonus_mu=is_bonus), parse_mode=ParseMode.HTML)
     elif data == "btn_back":
         await start(update, context)
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
     application = ApplicationBuilder().token(TOKEN).build()
-
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(buton_tiklama))
-
-    print("🚀 Starzbet Bot Aktif!")
+    # Komut olmayan her metni AI'ya gönderir
+    application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), ai_cevap_ver))
+    
+    print("🚀 Yapay Zeka Destekli Starzbet Bot Aktif!")
     application.run_polling()
