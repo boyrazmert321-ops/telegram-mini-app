@@ -74,11 +74,27 @@ def detay_kb(bonus_mu=False):
 # --- 6. FONKSİYONLAR ---
 async def ai_asistan(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or not update.message.text: return
+    
     prompt = f"{AI_TALIMATI}\nKullanıcı: {update.message.text}"
+    
     try:
-        response = model.generate_content(prompt)
-        await update.message.reply_text(response.text, parse_mode=ParseMode.HTML, reply_markup=ana_menu_kb())
-    except:
+        # GÜVENLİK FİLTRELERİNİ KALDIRAN KRİTİK AYAR
+        safety_settings = [
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
+        ]
+        
+        response = model.generate_content(prompt, safety_settings=safety_settings)
+        
+        if response.text:
+            await update.message.reply_text(response.text, parse_mode=ParseMode.HTML, reply_markup=ana_menu_kb())
+        else:
+            await update.message.reply_text("Sistemimiz şu an yanıt oluşturamıyor, lütfen butonları kullanın.", reply_markup=ana_menu_kb())
+            
+    except Exception as e:
+        print(f"AI Hatası: {e}")
         await update.message.reply_text("Şu an yoğunluk var, lütfen butonları kullanın.", reply_markup=ana_menu_kb())
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
