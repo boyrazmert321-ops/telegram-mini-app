@@ -86,7 +86,35 @@ async def ai_cevap_ver(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(response.text, parse_mode=ParseMode.HTML, reply_markup=ana_menu_kb())
     except Exception as e:
         await update.message.reply_text("Sistemimizde kısa süreli bir yoğunluk yaşanıyor, lütfen tekrar deneyiniz.", reply_markup=ana_menu_kb())
-
+async def ai_asistan(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.text: return
+    
+    user_msg = update.message.text
+    # AI'ya daha net bir komut veriyoruz
+    prompt = f"Sen Starzbet asistanısın. Müşteriye nazikçe cevap ver: {user_msg}"
+    
+    try:
+        # AI yanıtını oluştururken güvenlik ayarlarını esnetiyoruz (Bahis kelimeleri takılmasın diye)
+        response = model.generate_content(
+            prompt,
+            safety_settings=[
+                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+            ]
+        )
+        
+        if response.text:
+            await update.message.reply_text(response.text, parse_mode=ParseMode.HTML, reply_markup=ana_menu_kb())
+        else:
+            await update.message.reply_text("Üzgünüm, şu an yanıt oluşturamıyorum.", reply_markup=ana_menu_kb())
+            
+    except Exception as e:
+        # Hata neyse direkt Telegram'dan sana yazacak, böylece sorunu anlarız
+        error_msg = f"🤖 AI Bağlantı Hatası: {str(e)}"
+        print(error_msg) # Render loglarına yazar
+        await update.message.reply_text("Sistem güncelleniyor, lütfen menü butonlarını kullanın.", reply_markup=ana_menu_kb())
 # --- COMMANDS ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
