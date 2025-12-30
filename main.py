@@ -1,162 +1,99 @@
 import os
+import sys
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 from telegram.constants import ParseMode
-from groq import Groq
 
-# --- AYARLAR ---
-# Ortam değişkenlerini al
+# --- DEBUG ---
+print("=" * 60)
+print("🚀 BOT BAŞLATILIYOR...")
+print("=" * 60)
+
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 
-# Debug mesajı
-print("=" * 50)
-print(f"TELEGRAM_TOKEN var mı: {'EVET' if TOKEN else 'HAYIR'}")
-print(f"TOKEN ilk 10 karakter: {TOKEN[:10] if TOKEN else 'YOK'}")
-print(f"GROQ_API_KEY var mı: {'EVET' if GROQ_API_KEY else 'HAYIR'}")
-print("=" * 50)
+print(f"✅ TELEGRAM_TOKEN: {'Var' if TOKEN else 'Yok'}")
+print(f"✅ GROQ_API_KEY: {'Var' if GROQ_API_KEY else 'Yok'}")
 
-# Token kontrolü
 if not TOKEN:
-    print("❌ KRİTİK HATA: TELEGRAM_TOKEN ortam değişkeni ayarlanmamış!")
-    print("✅ Çözüm: Render Dashboard → Environment → Add Environment Variable")
-    print("✅ Key: TELEGRAM_TOKEN")
-    print(f"✅ Value: BotFather'dan aldığın token")
-    exit(1)
-
-# Groq client başlatma
-client = None
-if GROQ_API_KEY:
-    try:
-        client = Groq(api_key=GROQ_API_KEY)
-        print("✅ Groq API başarıyla bağlandı")
-    except Exception as e:
-        print(f"⚠️ Groq API bağlantı hatası: {e}")
-        client = None
-else:
-    print("⚠️ UYARI: GROQ_API_KEY yok, AI özelliği devre dışı")
+    print("❌ TELEGRAM_TOKEN bulunamadı!")
+    sys.exit(1)
 
 # --- MENÜ ---
 def get_main_menu():
-    keyboard = [
-        [InlineKeyboardButton("🎰 STARZBET MİNİ APP", web_app=WebAppInfo(url="https://telegram-mini-app-umber-chi.vercel.app"))],
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("🎰 STARZBET MİNİ APP", web_app=WebAppInfo(url="https://example.com"))],
         [InlineKeyboardButton("💳 DİNAMİK PAY", callback_data="bonus"),
          InlineKeyboardButton("🎰 SLOT %100", callback_data="bonus")],
         [InlineKeyboardButton("⚽ SPOR %100", callback_data="bonus"),
          InlineKeyboardButton("✨ %35 KAYIP", callback_data="bonus")],
         [InlineKeyboardButton("📱 MOBİL UYGULAMA", callback_data="mobile"),
-         InlineKeyboardButton("🎧 CANLI DESTEK", url="https://service.3kanumaigc.com/chatwindow.aspx?siteId=90005302&planId=1b050682-cde5-4176-8236-3bb94c891197#")],
-        [InlineKeyboardButton("🔗 GÜNCEL GİRİŞ", url="https://cutt.ly/drVOi2EN")]
-    ]
-    return InlineKeyboardMarkup(keyboard)
+         InlineKeyboardButton("🎧 CANLI DESTEK", url="https://example.com")],
+        [InlineKeyboardButton("🔗 GÜNCEL GİRİŞ", url="https://example.com")]
+    ])
 
 # --- HANDLER'LAR ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Başlangıç komutu"""
     await update.message.reply_text(
-        "🤖 *Starzbet Asistanına Hoş Geldiniz!*\n\n"
-        "Size nasıl yardımcı olabilirim?\n"
-        "Aşağıdaki butonları kullanabilir veya bana soru sorabilirsiniz!",
+        "🤖 *Starzbet'e Hoş Geldiniz!*\n\n"
+        "Aşağıdaki menüden istediğinizi seçebilirsiniz.",
+        reply_markup=get_main_menu(),
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Buton tıklamaları"""
+    query = update.callback_query
+    await query.answer()
+    
+    response = "🎁 *Bonuslar ve kampanyalar için:*\nhttps://example.com/promos"
+    
+    await query.message.edit_text(
+        response,
         reply_markup=get_main_menu(),
         parse_mode=ParseMode.MARKDOWN
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_message = update.message.text
-    
-    # AI kapalıysa
-    if not client:
-        await update.message.reply_text(
-            "ℹ️ *Yapay zeka şu anda kullanılamıyor.*\n\n"
-            "Lütfen butonları kullanın veya canlı destek ile iletişime geçin.",
-            reply_markup=get_main_menu(),
-            parse_mode=ParseMode.MARKDOWN
-        )
-        return
-    
-    # "Düşünüyorum" mesajı
-    thinking_msg = await update.message.reply_text("⏳ *Cevap hazırlanıyor...*", parse_mode=ParseMode.MARKDOWN)
-    
-    try:
-        # Groq'dan cevap al
-        completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[
-                {
-                    "role": "system",
-                    "content": "Sen Starzbet'in resmi asistanısın. Bahis, casino, bonuslar hakkında yardımcı ol. Kısa ve net cevaplar ver."
-                },
-                {"role": "user", "content": user_message}
-            ],
-            max_tokens=300,
-            temperature=0.7
-        )
-        
-        # Mesajı sil
-        await thinking_msg.delete()
-        
-        # Cevabı gönder
-        response = completion.choices[0].message.content
-        await update.message.reply_text(
-            f"🤖 *Asistan:*\n{response}",
-            reply_markup=get_main_menu(),
-            parse_mode=ParseMode.MARKDOWN
-        )
-        
-    except Exception as e:
-        logging.error(f"AI hatası: {e}")
-        await thinking_msg.delete()
-        await update.message.reply_text(
-            "❌ *Üzgünüm, bir hata oluştu.*\n\n"
-            "Lütfen daha sonra tekrar deneyin veya canlı destek butonunu kullanın.",
-            reply_markup=get_main_menu(),
-            parse_mode=ParseMode.MARKDOWN
-        )
-
-async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    
-    data = query.data
-    
-    if data == "bonus":
-        text = "🎁 *BONUS KAMPANYALARI*\n\n• İlk yatırım %100 bonus\n• Slot oyunları %100 bonus\n• Spor bahisleri %100 bonus\n• Kayıplarınıza %35 iade\n\nDetaylar: https://starzbet422.com/tr-tr/info/promos"
-    elif data == "mobile":
-        text = "📱 *MOBİL UYGULAMA*\n\nMobil uygulamamız yakında yayında olacak!"
-    else:
-        text = "Lütfen bir seçenek belirleyin."
-    
-    await query.message.edit_text(
-        text,
+    """Normal mesajlar"""
+    await update.message.reply_text(
+        "ℹ️ Sorularınız için lütfen canlı desteği kullanın.",
         reply_markup=get_main_menu(),
         parse_mode=ParseMode.MARKDOWN
     )
 
 # --- ANA PROGRAM ---
 def main():
-    # Log ayarı
+    # Log ayarları
     logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         level=logging.INFO
     )
     
-    print("🚀 Bot başlatılıyor...")
-    
-    # Application oluştur
-    app = ApplicationBuilder().token(TOKEN).build()
-    
-    # Handler'ları ekle
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(button_handler))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    
-    print("✅ Bot aktif! /start komutunu bekliyor...")
-    
-    # Polling başlat
-    app.run_polling(
-        drop_pending_updates=True,
-        allowed_updates=Update.ALL_TYPES
-    )
+    try:
+        # Application oluştur - ESKİ YÖNTEM DEĞİL!
+        application = Application.builder().token(TOKEN).build()
+        
+        # Handler'ları ekle
+        application.add_handler(CommandHandler("start", start))
+        application.add_handler(CallbackQueryHandler(button_handler))
+        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+        
+        print("✅ Bot başarıyla oluşturuldu!")
+        print("⏳ Polling başlatılıyor...")
+        
+        # Botu başlat
+        application.run_polling(
+            drop_pending_updates=True,
+            allowed_updates=Update.ALL_TYPES
+        )
+        
+    except Exception as e:
+        print(f"❌ Hata: {e}")
+        logging.error(f"Bot başlatma hatası: {e}", exc_info=True)
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
