@@ -1,128 +1,163 @@
 import os
 import logging
-import asyncio
-import threading
-import http.server
-import socketserver
-from groq import Groq
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
-from telegram.constants import ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
-from dotenv import load_dotenv
+from telegram.constants import ParseMode
+from groq import Groq
+import asyncio
 
-# --- 1. GÜVENLİ AYARLAR ---
-# Önce .env dosyasından veya ortam değişkenlerinden yükle
-load_dotenv()
+# --- AYARLAR (Render'da Environment Variables olarak ekleyeceksin) ---
+TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
-TOKEN = os.environ.get("TELEGRAM_TOKEN")  # Render'da env variable olarak ekle
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY")  # Render'da env variable olarak ekle
+# Groq client'ı oluştur
+client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
-if not TOKEN or not GROQ_API_KEY:
-    raise ValueError("TELEGRAM_TOKEN veya GROQ_API_KEY ortam değişkeni ayarlanmamış!")
+# --- MENÜ ---
+def get_main_menu():
+    keyboard = [
+        [InlineKeyboardButton("🎰 STARZBET MİNİ APP", web_app=WebAppInfo(url="https://telegram-mini-app-umber-chi.vercel.app"))],
+        [InlineKeyboardButton("💳 DİNAMİK PAY", callback_data="bonus_info"),
+         InlineKeyboardButton("🎰 SLOT %100", callback_data="bonus_info")],
+        [InlineKeyboardButton("⚽ SPOR %100", callback_data="bonus_info"),
+         InlineKeyboardButton("✨ %35 KAYIP", callback_data="bonus_info")],
+        [InlineKeyboardButton("📱 MOBİL UYGULAMA", callback_data="mobile_info"),
+         InlineKeyboardButton("🎧 CANLI DESTEK", url="https://service.3kanumaigc.com/chatwindow.aspx?siteId=90005302&planId=1b050682-cde5-4176-8236-3bb94c891197#")],
+        [InlineKeyboardButton("🔗 GÜNCEL GİRİŞ", url="https://cutt.ly/drVOi2EN")]
+    ]
+    return InlineKeyboardMarkup(keyboard)
 
-client = Groq(api_key=GROQ_API_KEY)
-
-# LİNKLER
-LINK_GIRIS = "https://cutt.ly/drVOi2EN"
-LINK_BONUSLAR = "https://starzbet422.com/tr-tr/info/promos"
-LINK_CANLI_DESTEK = "https://service.3kanumaigc.com/chatwindow.aspx?siteId=90005302&planId=1b050682-cde5-4176-8236-3bb94c891197#"
-LINK_MINI_APP = "https://telegram-mini-app-umber-chi.vercel.app"
-
-# --- 2. FONKSİYONLAR ---
-def ana_menu_kb():
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🎰 STARZBET MİNİ APP", web_app=WebAppInfo(url=LINK_MINI_APP))],
-        [InlineKeyboardButton("💳 DİNAMİK PAY", callback_data="btn_info"), InlineKeyboardButton("🎰 SLOT %100", callback_data="btn_info")],
-        [InlineKeyboardButton("⚽ SPOR %100", callback_data="btn_info"), InlineKeyboardButton("✨ %35 KAYIP", callback_data="btn_info")],
-        [InlineKeyboardButton("📱 MOBİL UYGULAMA", callback_data="btn_info"), InlineKeyboardButton("🎧 DESTEK", url=LINK_CANLI_DESTEK)],
-        [InlineKeyboardButton("🔗 GÜNCEL GİRİŞ ADRESİ", url=LINK_GIRIS)]
-    ])
-
+# --- HANDLER'LAR ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """/start komutu"""
+    welcome_text = """
+<b>🌟 Starzbet'e Hoş Geldiniz!</b>
+
+En iyi bahis deneyimi için buradayız.
+Aşağıdaki butonlardan istediğiniz seçeneği seçebilir
+veya bana soru sorabilirsiniz!
+"""
     await update.message.reply_text(
-        "<b>Starzbet Asistanına Hoş Geldiniz.</b>\nSize nasıl yardımcı olabilirim?",
-        reply_markup=ana_menu_kb(),
+        welcome_text,
+        reply_markup=get_main_menu(),
         parse_mode=ParseMode.HTML
     )
 
-async def ai_asistan(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not update.message or not update.message.text:
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Kullanıcı mesajlarını işle"""
+    user_message = update.message.text
+    
+    # Eğer Groq API anahtarı yoksa
+    if not client:
+        await update.message.reply_text(
+            "⚠️ AI servisi şu anda kullanılamıyor. Lütfen butonları kullanın.",
+            reply_markup=get_main_menu()
+        )
         return
     
-    user_message = update.message.text.strip()
-    
-    # Kısa mesajları kontrol et
-    if len(user_message) < 3:
-        await update.message.reply_text("Lütfen daha detaylı bir soru sorun.", reply_markup=ana_menu_kb())
-        return
+    # Kullanıcıya "düşünüyorum" mesajı göster
+    thinking_msg = await update.message.reply_text("🤔 Düşünüyorum...")
     
     try:
-        chat_completion = client.chat.completions.create(
-            messages=[
-                {"role": "system", "content": "Sen Starzbet resmi asistanısın. Bahis, casino, spor bahisleri, bonuslar ve ödemeler hakkında yardımcı ol. Profesyonel ve dostane bir dil kullan."},
-                {"role": "user", "content": user_message}
-            ],
+        # Groq API'ye sorgu gönder
+        completion = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            max_tokens=500,
-            temperature=0.7
+            messages=[
+                {
+                    "role": "system",
+                    "content": """Sen Starzbet'in resmi yardım asistanısın. 
+                    Kullanıcılara bahis, casino, bonuslar, ödemeler ve genel soruları hakkında yardımcı ol.
+                    Cevapların kısa, net ve yardımsever olsun.
+                    Eğer bir konuda emin değilsen, canlı desteğe yönlendir."""
+                },
+                {
+                    "role": "user",
+                    "content": user_message
+                }
+            ],
+            temperature=0.7,
+            max_tokens=500
         )
         
-        ai_response = chat_completion.choices[0].message.content
-        await update.message.reply_text(ai_response, reply_markup=ana_menu_kb())
+        # Düşünüyorum mesajını sil
+        await thinking_msg.delete()
+        
+        # AI cevabını gönder
+        ai_response = completion.choices[0].message.content
+        await update.message.reply_text(
+            ai_response,
+            reply_markup=get_main_menu(),
+            parse_mode=ParseMode.MARKDOWN
+        )
         
     except Exception as e:
         logging.error(f"AI Hatası: {e}")
+        # Düşünüyorum mesajını sil
+        await thinking_msg.delete()
+        
         await update.message.reply_text(
-            "Şu anda teknik bir sorun yaşıyoruz. Lütfen daha sonra tekrar deneyin veya canlı desteğe başvurun.",
-            reply_markup=ana_menu_kb()
+            "❌ Üzgünüm, bir hata oluştu. Lütfen daha sonra tekrar deneyin veya canlı destek butonunu kullanın.",
+            reply_markup=get_main_menu()
         )
 
-async def buton_tiklama(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Buton tıklamalarını işle"""
     query = update.callback_query
     await query.answer()
     
-    # Buton türüne göre özel mesajlar
-    if query.data == "btn_info":
-        await query.message.reply_text(
-            "🎁 **Tüm kampanyalarımız ve güncel bonuslar için:**\n\n"
-            f"🌐 {LINK_BONUSLAR}\n\n"
-            "Detaylı bilgi almak için lütfen sitemizi ziyaret edin.",
-            reply_markup=ana_menu_kb(),
-            parse_mode=ParseMode.MARKDOWN
-        )
-
-# --- 3. RENDER İÇİN PORT VE BAŞLATICI ---
-def run_server():
-    """Render için basit HTTP sunucusu"""
-    port = int(os.environ.get("PORT", 8080))
-    handler = http.server.SimpleHTTPRequestHandler
+    button_data = query.data
     
-    with socketserver.TCPServer(("", port), handler) as httpd:
-        print(f"🚀 HTTP Sunucusu {port} portunda başlatıldı")
-        httpd.serve_forever()
+    if button_data == "bonus_info":
+        response = """
+🎁 <b>BONUS KAMPANYALARI</b>
 
-if __name__ == '__main__':
-    # Log ayarları
+• <b>Hoş Geldin Bonusu:</b> İlk yatırımınıza %100 bonus
+• <b>Slot Bonusu:</b> Slot oyunlarında %100 bonus
+• <b>Spor Bonusu:</b> Spor bahislerinde %100 bonus
+• <b>Kayıp Bonusu:</b> Kayıplarınızın %35'i iade
+
+Detaylar için: https://starzbet422.com/tr-tr/info/promos
+"""
+    elif button_data == "mobile_info":
+        response = "📱 <b>MOBİL UYGULAMA</b>\n\nAndroid ve iOS için mobil uygulamamız yakında yayında!"
+    else:
+        response = "Lütfen aşağıdaki menüden bir seçenek belirleyin:"
+    
+    await query.message.edit_text(
+        response,
+        reply_markup=get_main_menu(),
+        parse_mode=ParseMode.HTML
+    )
+
+# --- ANA FONKSİYON ---
+def main():
+    """Botu başlat"""
+    # Log ayarı
     logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         level=logging.INFO
     )
     
-    # Render için HTTP sunucusu (opsiyonel)
-    threading.Thread(target=run_server, daemon=True).start()
+    # Token kontrolü
+    if not TOKEN:
+        logging.error("TELEGRAM_TOKEN ortam değişkeni ayarlanmamış!")
+        return
     
-    # Bot başlatma
-    app = ApplicationBuilder().token(TOKEN).build()
+    # Uygulamayı oluştur
+    application = ApplicationBuilder().token(TOKEN).build()
     
     # Handler'ları ekle
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(buton_tiklama))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, ai_asistan))
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CallbackQueryHandler(button_handler))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     
-    print("🤖 Starzbet Botu Aktif!")
+    print("🤖 Bot başlatılıyor...")
     
     # Botu başlat
-    app.run_polling(
+    application.run_polling(
         drop_pending_updates=True,
         allowed_updates=Update.ALL_TYPES
     )
+
+if __name__ == "__main__":
+    main()
