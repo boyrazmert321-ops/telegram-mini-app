@@ -20,7 +20,7 @@ LINK_MINI_APP = "https://telegram-mini-app-umber-chi.vercel.app"
 
 # --- 2. YAPAY ZEKA YAPILANDIRMASI (GEMINI) ---
 genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-pro')
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 AI_TALIMATI = (
     "Sen Starzbet sitesinin profesyonel asistanısın. Asla 'kanka' deme. "
