@@ -9,12 +9,12 @@ import requests
 import json
 
 print("=" * 80)
-print("🚀 STARZBET AI BOT - KONTROLLÜ VERSİYON")
+print("🚀 STARZBET AI BOT - GROQ AI DESTEKLİ")
 print("=" * 80)
 
-# TOKEN ve AI ANAHTARI
+# TOKEN ve API KEY'ler
 TOKEN = os.environ.get("TELEGRAM_TOKEN", "8031564377:AAHjJXBQ-b6f0BnKdbf6T7iwUjs1fCA7dW0")
-OPENAI_KEY = os.environ.get("OPENAI_KEY", "")  # Kendi OpenAI keyini koy
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "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")
 
 # STARZBET BİLGİLERİ
 STARZBET_BILGILERI = {
@@ -26,20 +26,22 @@ STARZBET_BILGILERI = {
     "mobile_apk": "https://starzbet422.com/apk",
     "telegram": "https://t.me/Starzbetgir",
     "canli_destek": "https://service.3kanumaigc.com/chatwindow.aspx?siteId=90005302&planId=1b050682-cde5-4176-8236-3bb94c891197#",
-    "giris_problem": "https://starzbet422.com/tr-tr/info/access"
+    "giris_problem": "https://starzbet422.com/tr-tr/info/access",
+    "kayit": "https://starzbet422.com/tr-tr/register"
 }
 
-# AI SİSTEM PROMPT'İ (ÇOK ÖNEMLİ!)
-AI_SYSTEM_PROMPT = """Sen Starzbet422.com'un resmi AI asistanısın. SADECE aşağıdaki konularda yardımcı olabilirsin:
+# GROQ AI SİSTEM PROMPT'İ
+GROQ_SYSTEM_PROMPT = """Sen Starzbet422.com'un resmi AI asistanısın. Kullanıcılarla samimi (kanka, dostum diyerek) ve yardımcı bir şekilde konuş.
 
-🚨 **KURALLAR:**
-1. SADECE starzbet422.com hakkında konuş
-2. BAŞKA site önerme, link verme
-3. Bonus, bahis, casino, yatırım/çekim, giriş konularında yardım et
+🚨 **KESİN KURALLAR:**
+1. SADECE ve SADECE starzbet422.com hakkında konuş
+2. Asla başka site, bahis şirketi veya platform önerme
+3. Tüm bilgiler starzbet422.com'a yönlendirsin
 4. Bilmediğin bir şey sorulursa "Canlı destekle iletişime geçin" de
 
-📌 **VERİLECEK LİNKLER (SADECE BUNLAR):**
+📌 **STARZBET BİLGİLERİ:**
 - Resmi site: https://starzbet422.com
+- Kayıt: https://starzbet422.com/tr-tr/register
 - Bonuslar: https://starzbet422.com/tr-tr/info/promos
 - Spor bahis: https://starzbet422.com/sports
 - Canlı casino: https://starzbet422.com/live-casino
@@ -48,17 +50,37 @@ AI_SYSTEM_PROMPT = """Sen Starzbet422.com'un resmi AI asistanısın. SADECE aşa
 - Giriş sorunu: https://starzbet422.com/tr-tr/info/access
 - APK: https://starzbet422.com/apk
 
-💬 **KONUŞMA TARZI:**
-- Kanka, dostum gibi samimi ama profesyonel konuş
-- Kısa ve net cevaplar ver
-- Emoji kullan (🎰, ⚽, 🎁, 🔗)
-- Linkleri her zaman ver
+🎯 **YARDIMCI OLACAĞIN KONULAR:**
+• Bonuslar ve kampanyalar
+• Para yatırma/çekme işlemleri
+• Spor bahis oranları
+• Casino oyunları
+• Giriş/kayıt problemleri
+• Mobil uygulama (APK)
+• Özel oranlar (telegram kanalı)
 
-❌ **YAPMA:**
+💬 **KONUŞMA TARZI:**
+- Samimi, arkadaş gibi konuş (kanka, dostum, abi)
+- Kısa, net ve öz cevaplar ver
+- Emoji kullan (🎰, ⚽, 🎁, 💰, 🔥)
+- Linkleri her zaman paylaş
+- Pozitif ve yardımsever ol
+
+❌ **ASLA YAPMA:**
 - Starzbet dışında site önerme
-- Hayali bonus uydurma
-- Yanlış bilgi verme
-- Politik/uyuşturucu konulara girme"""
+- Yanlış veya hayali bonus bilgisi verme
+- Politik/dini konulara girme
+- Uygunsuz dil kullanma
+- Kullanıcıyı yanlış yönlendirme
+
+⚠️ **TEHLİKELİ SORULARDA:**
+Eğer kullanıcı starzbet dışında bir site sorarsa:
+"Kusura bakma kanka, ben sadece starzbet422.com hakkında yardımcı olabilirim. Başka site bilemem."
+
+Eğer yasa dışı bir şey sorarsa:
+"Bu konuda yardımcı olamam. Lütfen starzbet422.com ile ilgili sorular sor."
+
+Şimdi kullanıcının sorusuna uygun şekilde cevap ver."""
 
 # MENÜ
 def ana_menu():
@@ -80,13 +102,14 @@ def chat_menu():
         [InlineKeyboardButton("🎮 CASİNO SOR", callback_data="soru_casino"),
          InlineKeyboardButton("💳 YATIRIM SOR", callback_data="soru_yatirim")],
         [InlineKeyboardButton("🔗 LİNK İSTE", callback_data="soru_link"),
-         InlineKeyboardButton("🎧 CANLI DESTEK", url=STARZBET_BILGILERI["canli_destek"])],
-        [InlineKeyboardButton("🔙 ANA MENÜ", callback_data="ana_menu")]
+         InlineKeyboardButton("📝 KAYIT OL", url=STARZBET_BILGILERI["kayit"])],
+        [InlineKeyboardButton("🎧 CANLI DESTEK", url=STARZBET_BILGILERI["canli_destek"]),
+         InlineKeyboardButton("🔙 ANA MENÜ", callback_data="ana_menu")]
     ])
 
 # /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    ai_durum = "✅ Aktif" if OPENAI_KEY else "❌ Devre Dışı"
+    ai_durum = "✅ Aktif" if GROQ_API_KEY else "❌ Devre Dışı"
     
     mesaj = f"""🌟 *STARZBET422.COM AI ASİSTANI* 🌟
 
@@ -94,13 +117,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 🕒 *Son Güncelleme:* {datetime.now().strftime("%d.%m.%Y %H:%M")}
 
 🎯 *NELER YAPABİLİRİM:*
-• Starzbet bonuslarını anlatırım
-• Bahis ve casino konularında yardım ederim
-• Gerekli linkleri veririm
-• Samimi sohbet ederim
+• Starzbet hakkında her şeyi anlatırım
+• Bonus ve kampanyaları açıklarım
+• Bahis/casino konularında yardım ederim
+• Samimi sohbet ederim (kanka gibi)
 
 🚫 *NELER YAPMAM:*
-• Başka site önermem
+• Başka site önermem (sadece starzbet422.com)
 • Yanlış bilgi vermem
 • Starzbet dışında konuşmam
 
@@ -115,76 +138,61 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN
     )
 
-# AI CHAT FONKSİYONU
-async def ai_cevap_ver(kullanici_sorusu, chat_history=None):
-    """OpenAI ile kontrollü cevap ver"""
+# GROQ AI CEVAP FONKSİYONU
+async def groq_ai_cevap(kullanici_sorusu):
+    """Groq AI ile cevap ver"""
     
-    if not OPENAI_KEY:
+    if not GROQ_API_KEY:
         return "🤖 AI şu anda aktif değil. Lütfen butonları kullanın veya canlı desteğe başvurun."
     
     try:
-        # Chat history oluştur
-        messages = [
-            {"role": "system", "content": AI_SYSTEM_PROMPT}
-        ]
+        # Groq API endpoint
+        url = "https://api.groq.com/openai/v1/chat/completions"
         
-        # Eski konuşmaları ekle
-        if chat_history:
-            messages.extend(chat_history[-6:])  # Son 6 mesajı al
-        
-        # Kullanıcı sorusunu ekle
-        messages.append({"role": "user", "content": kullanici_sorusu})
-        
-        # OpenAI API çağrısı
         headers = {
-            "Authorization": f"Bearer {OPENAI_KEY}",
+            "Authorization": f"Bearer {GROQ_API_KEY}",
             "Content-Type": "application/json"
         }
         
         data = {
-            "model": "gpt-3.5-turbo",
-            "messages": messages,
+            "model": "llama-3.3-70b-versatile",
+            "messages": [
+                {"role": "system", "content": GROQ_SYSTEM_PROMPT},
+                {"role": "user", "content": kullanici_sorusu}
+            ],
             "temperature": 0.7,
-            "max_tokens": 300
+            "max_tokens": 500,
+            "top_p": 0.9
         }
         
-        response = requests.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers=headers,
-            json=data,
-            timeout=30
-        )
+        response = requests.post(url, headers=headers, json=data, timeout=30)
         
         if response.status_code == 200:
             result = response.json()
             ai_response = result["choices"][0]["message"]["content"]
             return ai_response
+        elif response.status_code == 401:
+            return "🔑 AI anahtar hatası. Lütfen canlı desteğe başvurun."
+        elif response.status_code == 429:
+            return "⏳ AI yoğun, lütfen biraz sonra tekrar deneyin."
         else:
-            return f"⚠️ AI yanıt vermedi. Lütfen canlı desteğe başvurun: {STARZBET_BILGILERI['canli_destek']}"
+            error_msg = f"⚠️ AI yanıt vermedi (Hata: {response.status_code}). Lütfen canlı desteğe başvurun: {STARZBET_BILGILERI['canli_destek']}"
+            return error_msg
             
+    except requests.exceptions.Timeout:
+        return "⏰ AI yanıt vermedi (zaman aşımı). Lütfen tekrar deneyin."
+    except requests.exceptions.ConnectionError:
+        return "🔌 Bağlantı hatası. Lütfen internet bağlantınızı kontrol edin."
     except Exception as e:
-        print(f"AI Hatası: {e}")
-        return f"🤖 Teknik sorun. Canlı destek: {STARZBET_BILGILERI['canli_destek']}"
+        print(f"Groq AI Hatası: {e}")
+        return f"🤖 Teknik sorun oluştu. Canlı destek: {STARZBET_BILGILERI['canli_destek']}"
 
 # MESAJ HANDLER
 async def mesaj_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
     user_message = update.message.text
     
-    # Kullanıcının chat geçmişini al veya oluştur
-    if 'chat_history' not in context.user_data:
-        context.user_data['chat_history'] = []
-    
-    # AI ile cevap ver
-    ai_response = await ai_cevap_ver(user_message, context.user_data['chat_history'])
-    
-    # Geçmişe ekle
-    context.user_data['chat_history'].append({"role": "user", "content": user_message})
-    context.user_data['chat_history'].append({"role": "assistant", "content": ai_response})
-    
-    # Geçmişi sınırla (max 10 mesaj)
-    if len(context.user_data['chat_history']) > 10:
-        context.user_data['chat_history'] = context.user_data['chat_history'][-10:]
+    # Önce AI'ya sor
+    ai_response = await groq_ai_cevap(user_message)
     
     await update.message.reply_text(
         ai_response,
@@ -198,15 +206,15 @@ async def hizli_soru(update: Update, context: ContextTypes.DEFAULT_TYPE, soru_ti
     await query.answer()
     
     sorular = {
-        "bonus": "Starzbet'te şu anki bonuslar neler? Hoşgeldin bonusu var mı?",
-        "bahis": "Spor bahislerinde özel oran nasıl alınır? Canlı bahis var mı?",
-        "casino": "Canlı casino oyunları neler? Rulet ve blackjack bonusu var mı?",
-        "yatirim": "Para yatırma yöntemleri neler? Komisyon alınıyor mu?",
-        "link": "Starzbet giriş linki, APK indirme ve Telegram kanalı linklerini verir misin?"
+        "bonus": "Starzbet'te şu an aktif olan bonuslar neler? Hoşgeldin bonusu var mı? Casino bonusu nasıl?",
+        "bahis": "Spor bahislerinde özel oran nasıl alınır? Canlı bahis var mı? Hangi sporlar var?",
+        "casino": "Canlı casino oyunları neler? Rulet, blackjack, baccarat var mı? Slot makineleri nasıl?",
+        "yatirim": "Para yatırma yöntemleri neler? Komisyon alınıyor mu? Minimum yatırım ne kadar?",
+        "link": "Starzbet giriş linki, kayıt linki, APK indirme linki ve Telegram kanalı linklerini verir misin?"
     }
     
     if soru_tipi in sorular:
-        ai_response = await ai_cevap_ver(sorular[soru_tipi])
+        ai_response = await groq_ai_cevap(sorular[soru_tipi])
         await query.message.reply_text(
             ai_response,
             reply_markup=chat_menu(),
@@ -223,8 +231,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if data == "bonuslar":
         await query.message.reply_text(
             f"🎁 *STARZBET BONUSLARI* 🎁\n\n"
-            f"🔗 Tüm bonuslar: {STARZBET_BILGILERI['bonus_sayfasi']}\n\n"
-            f"💬 Bonus detayları için AI ile konuşabilir veya canlı desteğe başvurabilirsin.",
+            f"🔗 Tüm bonuslar: {STARZBET_BILGILERI['bonus_sayfasi']}\n"
+            f"💸 Hoşgeldin bonusu mevcut\n"
+            f"🎰 Casino bonusları aktif\n"
+            f"⚽ Spor bahis bonusları\n\n"
+            f"💬 Detaylı bilgi için AI ile konuşabilirsin!",
             reply_markup=ana_menu(),
             parse_mode=ParseMode.MARKDOWN
         )
@@ -234,10 +245,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "💬 *AI İLE KONUŞMA MODU* 💬\n\n"
             "🤖 Şimdi bana Starzbet ile ilgili ne sormak istersin?\n\n"
             "🎯 *Örnek sorular:*\n"
-            "• Bonuslar neler?\n"
+            "• Bonuslar nelerdir?\n"
             "• Nasıl para yatırabilirim?\n"
             "• Casino oyunları neler?\n"
-            "• Bahis oranları nasıl?\n\n"
+            "• Özel oran nasıl alınır?\n"
+            "• Mobil uygulamayı nasıl indirebilirim?\n\n"
             "🚫 *Dikkat:* Sadece Starzbet konularında yardımcı olabilirim.",
             reply_markup=chat_menu(),
             parse_mode=ParseMode.MARKDOWN
@@ -258,11 +270,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # KOMUTLAR
 async def komut_reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Chat geçmişini temizle"""
-    if 'chat_history' in context.user_data:
-        context.user_data['chat_history'] = []
-    
     await update.message.reply_text(
-        "🔄 *Chat geçmişi temizlendi!*\n\n"
+        "🔄 *Sohbet sıfırlandı!*\n\n"
         "Yeni bir konuşmaya başlayabiliriz kanka!",
         reply_markup=ana_menu(),
         parse_mode=ParseMode.MARKDOWN
@@ -275,7 +284,26 @@ async def komut_destek(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"İnsan desteğine ihtiyacın varsa:\n"
         f"{STARZBET_BILGILERI['canli_destek']}\n\n"
         f"⏰ 7/24 hizmet\n"
-        f"💬 Türkçe destek",
+        f"💬 Türkçe destek\n"
+        f"🔧 Teknik sorunlar\n"
+        f"💰 Para işlemleri",
+        reply_markup=ana_menu(),
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+async def komut_linkler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Tüm linkleri göster"""
+    await update.message.reply_text(
+        f"🔗 *STARZBET TÜM LİNKLERİ* 🔗\n\n"
+        f"• 🌐 Resmi Site: {STARZBET_BILGILERI['resmi_site']}\n"
+        f"• 📝 Kayıt Ol: {STARZBET_BILGILERI['kayit']}\n"
+        f"• 🎁 Bonuslar: {STARZBET_BILGILERI['bonus_sayfasi']}\n"
+        f"• ⚽ Spor Bahis: {STARZBET_BILGILERI['spor_bahis']}\n"
+        f"• 🎮 Canlı Casino: {STARZBET_BILGILERI['canli_casino']}\n"
+        f"• 📱 APK İndir: {STARZBET_BILGILERI['mobile_apk']}\n"
+        f"• 📢 Telegram: {STARZBET_BILGILERI['telegram']}\n"
+        f"• 🎧 Canlı Destek: {STARZBET_BILGILERI['canli_destek']}\n"
+        f"• 🚨 Giriş Sorunu: {STARZBET_BILGILERI['giris_problem']}",
         reply_markup=ana_menu(),
         parse_mode=ParseMode.MARKDOWN
     )
@@ -287,10 +315,11 @@ def main():
         level=logging.INFO
     )
     
-    print("🚀 STARZBET AI BOT BAŞLATILIYOR...")
+    print("🚀 STARZBET GROQ AI BOT BAŞLATILIYOR...")
     print(f"🔗 Resmi Site: {STARZBET_BILGILERI['resmi_site']}")
-    print(f"🤖 AI Durumu: {'AKTİF' if OPENAI_KEY else 'PASİF'}")
-    print("✅ Kontrollü AI - Saçmalamayacak")
+    print(f"🤖 Groq AI Durumu: {'AKTİF' if GROQ_API_KEY else 'PASİF'}")
+    print(f"🔑 API Key: {'Var' if GROQ_API_KEY else 'Yok'}")
+    print("✅ Groq AI ile çalışacak - Llama 3.3 70B modeli")
     
     try:
         app = Application.builder().token(TOKEN).build()
@@ -299,12 +328,13 @@ def main():
         app.add_handler(CommandHandler("start", start))
         app.add_handler(CommandHandler("reset", komut_reset))
         app.add_handler(CommandHandler("destek", komut_destek))
+        app.add_handler(CommandHandler("linkler", komut_linkler))
         app.add_handler(CallbackQueryHandler(button_handler))
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, mesaj_handler))
         
         print("✅ Bot hazır!")
         print("📱 /start komutunu bekliyor...")
-        print("💬 AI aktif, kontrollü konuşacak")
+        print("💬 Groq AI aktif, samimi sohbet edecek")
         
         app.run_polling(drop_pending_updates=True)
         
