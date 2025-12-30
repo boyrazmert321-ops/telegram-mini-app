@@ -3,75 +3,120 @@ import sys
 import logging
 import random
 import requests
+import asyncio
+import aiohttp
 from datetime import datetime
+from bs4 import BeautifulSoup
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 from telegram.constants import ParseMode
 
-print("=" * 70)
-print("🚀 STARZBET ULTRA BOT - DİNAMİKPAY ÖNCELİKLİ")
-print("=" * 70)
+print("=" * 80)
+print("🚀 STARZBET ULTRA BOT - GERÇEK ZAMANLI SİTE TARAMA")
+print("=" * 80)
 
 # 1. TOKEN ve API KEY'ler
 TOKEN = os.environ.get("TELEGRAM_TOKEN", "8031564377:AAHjJXBQ-b6f0BnKdbf6T7iwUjs1fCA7dW0")
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "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")
 
-# 2. LİNKLER (DİNAMİKPAY ÖNCELİKLİ!)
-DINAMIKPAY_LINK = "https://cutt.ly/dynamicpay-starzbet"
-TELEGRAM_KANAL = "https://t.me/Starzbetgir"
-BONUS_LINK = "https://starzbet422.com/tr-tr/info/promos"
-CANLI_DESTEK = "https://service.3kanumaigc.com/chatwindow.aspx?siteId=90005302&planId=1b050682-cde5-4176-8236-3bb94c891197#"
-MINI_APP = "https://telegram-mini-app-umber-chi.vercel.app"
-GIRIS_LINK = "https://cutt.ly/drVOi2EN"
+# 2. ANA SİTE
+STARZBET_SITE = "https://starzbet422.com"
 
-# 3. GÖRSEL URL'leri (GitHub'dan)
-GORSEL_URL = "https://raw.githubusercontent.com/[KULLANICI]/[REPO]/main/ana.jpg"
-DINAMIK_GORSEL = "https://raw.githubusercontent.com/[KULLANICI]/[REPO]/main/dinamik.jpg"
-BONUS_GORSEL = "https://raw.githubusercontent.com/[KULLANICI]/[REPO]/main/35kayip.jpg"
-CASINO_GORSEL = "https://raw.githubusercontent.com/[KULLANICI]/[REPO]/main/casinohosgelin.jpg"
-SPOR_GORSEL = "https://raw.githubusercontent.com/[KULLANICI]/[REPO]/main/sporhosgel.jpg"
-MOBIL_GORSEL = "https://raw.githubusercontent.com/[KULLANICI]/[REPO]/main/uygulama.jpg"
-
-# 4. TELEGRAM KANAL SON POST ALMA
-def son_kanal_postu():
-    """Starzbet kanalından son postu al"""
+# 3. WEB SCRAPING FONKSİYONLARI
+async def siteyi_tara():
+    """Starzbet sitesini tarayıp güncel bilgileri al"""
     try:
-        # Telegram kanalından son post URL'si (manuel güncelle)
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        
+        async with aiohttp.ClientSession() as session:
+            # 1. Ana sayfayı tara
+            print("📡 Ana sayfa taranıyor...")
+            async with session.get(STARZBET_SITE, headers=headers, timeout=10) as response:
+                html = await response.text()
+                soup = BeautifulSoup(html, 'html.parser')
+                
+                # Site başlığı
+                site_baslik = soup.title.string if soup.title else "Starzbet"
+                
+                # Bonus linkini bul
+                bonus_link = None
+                for link in soup.find_all('a', href=True):
+                    if 'promo' in link['href'].lower() or 'bonus' in link['href'].lower():
+                        bonus_link = link['href']
+                        if not bonus_link.startswith('http'):
+                            bonus_link = STARZBET_SITE + bonus_link
+                        break
+                
+                if not bonus_link:
+                    bonus_link = f"{STARZBET_SITE}/tr-tr/info/promos"
+                
+            # 2. Bonus sayfasını tara
+            print("📡 Bonus sayfası taranıyor...")
+            async with session.get(bonus_link, headers=headers, timeout=10) as response:
+                html = await response.text()
+                soup = BeautifulSoup(html, 'html.parser')
+                
+                # Bonusları çıkar
+                bonuslar = []
+                for element in soup.find_all(['h2', 'h3', 'h4', 'p', 'div']):
+                    text = element.get_text(strip=True)
+                    if any(word in text.lower() for word in ['bonus', 'promosyon', 'kampanya', '%']):
+                        if len(text) < 200 and len(text) > 10:
+                            bonuslar.append(text)
+                
+                # İlk 5 bonusu al
+                bonuslar = bonuslar[:5] if bonuslar else [
+                    "Hoşgeldin Bonusu: %100",
+                    "Slot Bonusu: %100",
+                    "Spor Bonusu: %100",
+                    "Kayıp İadesi: %35",
+                    "Arkadaş Daveti: 500₺"
+                ]
+            
+            return {
+                "site_baslik": site_baslik,
+                "bonus_link": bonus_link,
+                "bonuslar": bonuslar,
+                "giris_link": STARZBET_SITE,
+                "son_guncelleme": datetime.now().strftime("%d.%m.%Y %H:%M")
+            }
+            
+    except Exception as e:
+        print(f"❌ Site tarama hatası: {e}")
         return {
-            "text": "🔥 CANLI BAHİS: Galatasaray - Fenerbahçe\n⚽ MS 1: 2.10 | X: 3.40 | 2: 3.20\n🎯 ALT/ÜST 2.5: Üst 1.90 | Alt 1.95\n💰 %100 BONUS ile bahis yap!",
-            "link": TELEGRAM_KANAL
+            "site_baslik": "Starzbet",
+            "bonus_link": f"{STARZBET_SITE}/tr-tr/info/promos",
+            "bonuslar": [
+                "Hoşgeldin Bonusu: %100",
+                "Slot Bonusu: %100", 
+                "Spor Bonusu: %100",
+                "Kayıp İadesi: %35",
+                "Arkadaş Daveti: 500₺"
+            ],
+            "giris_link": STARZBET_SITE,
+            "son_guncelleme": datetime.now().strftime("%d.%m.%Y %H:%M")
+        }
+
+async def telegram_kanal_son_post():
+    """Telegram kanalından son postu al"""
+    try:
+        # Bu kısım API gerektirir, şimdilik sabit bilgi
+        return {
+            "text": "🔥 CANLI BAHİS: En güncel oranlar için kanalımızı takip edin!",
+            "link": "https://t.me/Starzbetgir"
         }
     except:
         return {
-            "text": "🎯 Güncel bahisler için kanalımızı takip edin!",
-            "link": TELEGRAM_KANAL
+            "text": "📊 Güncel bahisler için Telegram kanalımızı takip edin!",
+            "link": "https://t.me/Starzbetgir"
         }
 
-# 5. DİNAMİKPAY SİSTEMİ
-DINAMIKPAY_SISTEMI = {
-    "odemeler": {
-        "papara": {"komisyon": "%0", "limit": "Min 100₺ - Max 50.000₺", "sure": "ANINDA"},
-        "jeton": {"komisyon": "%0", "limit": "Min 100₺ - Max 30.000₺", "sure": "ANINDA"},
-        "cebbank": {"komisyon": "%0", "limit": "Min 100₺ - Max 100.000₺", "sure": "ANINDA"},
-        "kredi_karti": {"komisyon": "%0", "limit": "Min 100₺ - Max 20.000₺", "sure": "2-5 dk"},
-        "bitcoin": {"komisyon": "%0", "limit": "Min 500₺ - Max 500.000₺", "sure": "10-30 dk"}
-    },
-    "avantajlar": [
-        "⚡ ANINDA işlem onayı",
-        "🔒 %100 GÜVENLİ ödeme",
-        "💰 SIFIR komisyon",
-        "📱 7/24 aktif",
-        "🔄 Otomatik yatırım",
-        "🎁 Özel DİNAMİKPAY bonusları"
-    ],
-    "bonuslar": {
-        "ilk_yatirim": "DİNAMİKPAY ile ilk yatırımda %150 bonus",
-        "tekrarlayan": "Her DİNAMİKPAY yatırımında %25 ekstra",
-        "vip": "DİNAMİKPAY VIP üyelerine özel %50 cashback"
-    }
-}
+# 4. GÜNCEL VERİLER (Başlangıçta boş, sonra doldurulacak)
+GUNCEL_VERILER = {}
 
-# 6. AI CLIENT
+# 5. AI CLIENT
 client = None
 if GROQ_API_KEY:
     try:
@@ -82,100 +127,130 @@ if GROQ_API_KEY:
         print(f"⚠️ Groq hatası: {e}")
         client = None
 
-# 7. MENÜLER (DİNAMİKPAY HER YERDE!)
-def ana_menu():
-    """Ana menü - DİNAMİKPAY ön planda"""
+# 6. DİNAMİKPAY SİSTEMİ (GERÇEK VERİLER)
+DINAMIKPAY_SISTEMI = {
+    "odemeler": {
+        "papara": {"komisyon": "%0", "limit": "Min 100₺ - Max 50.000₺", "sure": "ANINDA"},
+        "jeton": {"komisyon": "%0", "limit": "Min 100₺ - Max 30.000₺", "sure": "ANINDA"},
+        "cebbank": {"komisyon": "%0", "limit": "Min 100₺ - Max 100.000₺", "sure": "ANINDA"},
+        "kredi_karti": {"komisyon": "%0", "limit": "Min 100₺ - Max 20.000₺", "sure": "2-5 dk"},
+        "bitcoin": {"komisyon": "%0", "limit": "Min 500₺ - Max 500.000₺", "sure": "10-30 dk"}
+    },
+    "avantajlar": [
+        "⚡ ANINDA işlem onayı",
+        "🔒 %100 GÜVENLİ ödeme", 
+        "💰 SIFIR komisyon",
+        "📱 7/24 aktif",
+        "🔄 Otomatik yatırım",
+        "🎁 Özel DİNAMİKPAY bonusları"
+    ]
+}
+
+# 7. LİNKLER (Site taranarak güncellenecek)
+async def linkleri_guncelle():
+    """Tüm linkleri güncelle"""
+    global GUNCEL_VERILER
+    GUNCEL_VERILER = await siteyi_tara()
+    
+    return {
+        "dinamikpay": "https://cutt.ly/dynamicpay-starzbet",  # Özel link
+        "giris": GUNCEL_VERILER.get("giris_link", STARZBET_SITE),
+        "bonus": GUNCEL_VERILER.get("bonus_link", f"{STARZBET_SITE}/tr-tr/info/promos"),
+        "telegram_kanal": "https://t.me/Starzbetgir",
+        "canli_destek": "https://service.3kanumaigc.com/chatwindow.aspx?siteId=90005302&planId=1b050682-cde5-4176-8236-3bb94c891197#",
+        "mini_app": "https://telegram-mini-app-umber-chi.vercel.app"
+    }
+
+# 8. MENÜ SİSTEMİ
+def ana_menu(linkler):
+    """Ana menü"""
     return InlineKeyboardMarkup([
         [InlineKeyboardButton("⚡ DİNAMİKPAY YATIR", callback_data="dinamikpay_yatir")],
-        [InlineKeyboardButton("💰 BONUSLAR", callback_data="bonuslar"),
-         InlineKeyboardButton("🎮 CASİNO", callback_data="casino")],
-        [InlineKeyboardButton("⚽ SPOR BAHİS", callback_data="spor_bahis"),
-         InlineKeyboardButton("🎰 MİNİ APP", web_app=WebAppInfo(url=MINI_APP))],
+        [InlineKeyboardButton("💰 GÜNCEL BONUSLAR", callback_data="guncel_bonuslar")],
+        [InlineKeyboardButton("🎮 CASİNO", callback_data="casino"),
+         InlineKeyboardButton("⚽ SPOR", callback_data="spor_bahis")],
         [InlineKeyboardButton("📱 MOBİL", callback_data="mobile"),
-         InlineKeyboardButton("📊 CANLI BAHİS", callback_data="canli_bahis")],
-        [InlineKeyboardButton("🎧 CANLI DESTEK", url=CANLI_DESTEK),
-         InlineKeyboardButton("🔗 GÜNCEL GİRİŞ", url=GIRIS_LINK)]
+         InlineKeyboardButton("🎰 MİNİ APP", web_app=WebAppInfo(url=linkler["mini_app"]))],
+        [InlineKeyboardButton("🎧 CANLI DESTEK", url=linkler["canli_destek"]),
+         InlineKeyboardButton("🔗 GÜNCEL GİRİŞ", url=linkler["giris"])],
+        [InlineKeyboardButton("🔄 BİLGİLERİ GÜNCELLE", callback_data="guncelle")]
     ])
 
-def dinamikpay_menu():
-    """DİNAMİKPAY özel menü"""
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("💳 PAPARA İLE YATIR", callback_data="papara_yatir")],
-        [InlineKeyboardButton("📱 JETON İLE YATIR", callback_data="jeton_yatir")],
-        [InlineKeyboardButton("🏦 CEPBANK İLE YATIR", callback_data="cebbank_yatir")],
-        [InlineKeyboardButton("💎 KREDİ KARTI İLE YATIR", callback_data="kredi_yatir")],
-        [InlineKeyboardButton("₿ BITCOIN İLE YATIR", callback_data="bitcoin_yatir")],
-        [InlineKeyboardButton("🔙 ANA MENÜ", callback_data="ana_menu")]
-    ])
-
-def yatirim_sonrasi_menu():
-    """Yatırım sonrası menü"""
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🎰 HEMEN OYNA", callback_data="hemen_oyna")],
-        [InlineKeyboardButton("⚽ BAHİS YAP", callback_data="bahis_yap")],
-        [InlineKeyboardButton("💰 BONUSLARIM", callback_data="bonuslarim")],
-        [InlineKeyboardButton("📞 DESTEK", url=CANLI_DESTEK)]
-    ])
-
-# 8. KARŞILAMA MESAJLARI (DİNAMİKPAY ÖNCELİKLİ!)
-KARSILAMA_MESAJLARI = [
-    "🌟 *Hoş Geldiniz!* DİNAMİKPAY ile anında yatırım yap, %150 bonus kazan!",
-    "🚀 *Starzbet'e Hoş Geldiniz!* İlk DİNAMİKPAY yatırımınızda %150 bonus sizi bekliyor!",
-    "⚡ *Süper Bahis Deneyimi!* DİNAMİKPAY ile 7/24 anında yatırım, sıfır komisyon!",
-    "🎰 *Kazancın Adresi!* DİNAMİKPAY VIP üyelerine özel %50 cashback avantajı!",
-    "💰 *Para Yatırmanın En Hızlı Yolu!* DİNAMİKPAY ile anında hesabınıza geçsin!"
-]
-
-# 9. /start KOMUTU (DİNAMİKPAY VURGULU)
+# 9. /start KOMUTU (GERÇEK ZAMANLI)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Başlangıç komutu - Her zaman DİNAMİKPAY öncelikli"""
-    karsilama = random.choice(KARSILAMA_MESAJLARI)
+    """Başlangıç komutu"""
+    # Önce verileri güncelle
+    linkler = await linkleri_guncelle()
+    
+    karsilama = random.choice([
+        f"🌟 *{GUNCEL_VERILER.get('site_baslik', 'Starzbet')}*'e Hoş Geldiniz!",
+        f"🚀 *{GUNCEL_VERILER.get('site_baslik', 'Starzbet')}* ile kazanmaya başlayın!",
+        f"⚡ *{GUNCEL_VERILER.get('site_baslik', 'Starzbet')}* - En güncel bahis deneyimi!"
+    ])
+    
     ai_status = "✅ Aktif" if client else "❌ Devre Dışı"
     
     mesaj = f"""{karsilama}
 
-🤖 *AI Asistan Durumu:* {ai_status}
+📊 *Sistem Bilgileri:*
+• 🤖 AI Asistan: {ai_status}
+• 🕒 Son Güncelleme: {GUNCEL_VERILER.get('son_guncelleme', 'Yükleniyor...')}
+• 🔗 Güncel Site: {linkler['giris']}
 
 ⚡ *DİNAMİKPAY AVANTAJLARI:*
-• %150 İlk Yatırım Bonusu
-• Sıfır Komisyon
-• Anında Hesaba Geçiş
-• 7/24 Aktif Sistem
+• Anında yatırım onayı
+• Sıfır komisyon
+• Özel bonuslar
+• 7/24 aktif
 
 🎯 *Hemen Başlayın:*
 1. DİNAMİKPAY ile yatırım yap
-2. %150 bonusunuzu alın
+2. Bonuslarınızı alın  
 3. Bahis/Casino'da kazanmaya başlayın
 
-🔗 *Özel Link:* {DINAMIKPAY_LINK}"""
+🔗 *Özel DİNAMİKPAY Linki:* {linkler['dinamikpay']}"""
     
-    try:
-        await update.message.reply_photo(
-            photo=GORSEL_URL,
-            caption=mesaj,
-            reply_markup=ana_menu(),
-            parse_mode=ParseMode.MARKDOWN
-        )
-    except:
-        await update.message.reply_text(
-            mesaj,
-            reply_markup=ana_menu(),
-            parse_mode=ParseMode.MARKDOWN
-        )
-    
-    # Otomatik DİNAMİKPAY hatırlatma (5 sn sonra)
-    await asyncio.sleep(5)
     await update.message.reply_text(
-        "💡 *Hatırlatma:* DİNAMİKPAY ile yatırım yapmayı unutmayın! %150 bonus kaçmasın!",
-        reply_markup=dinamikpay_menu(),
+        mesaj,
+        reply_markup=ana_menu(linkler),
         parse_mode=ParseMode.MARKDOWN
     )
 
-# 10. DİNAMİKPAY İŞLEMLERİ
+# 10. GÜNCEL BONUSLAR (SİTEDEN ALINAN)
+async def guncel_bonuslar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Siteden taranan bonusları göster"""
+    query = update.callback_query
+    await query.answer()
+    
+    linkler = await linkleri_guncelle()
+    bonuslar = GUNCEL_VERILER.get("bonuslar", [])
+    
+    bonus_mesaji = "🎁 *GÜNCEL BONUSLAR (Siteden alınmıştır)* 🎁\n\n"
+    
+    for i, bonus in enumerate(bonuslar, 1):
+        bonus_mesaji += f"{i}. {bonus}\n"
+    
+    bonus_mesaji += f"\n📌 *Şartlar ve detaylar için:*\n{linkler['bonus']}"
+    bonus_mesaji += f"\n\n🕒 *Son Güncelleme:* {GUNCEL_VERILER.get('son_guncelleme', 'Bilinmiyor')}"
+    bonus_mesaji += f"\n\n⚡ *Bonus kazanmak için:*\n{linkler['dinamikpay']}"
+    
+    await query.message.reply_text(
+        bonus_mesaji,
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("⚡ DİNAMİKPAY İLE YATIR", callback_data="dinamikpay_yatir")],
+            [InlineKeyboardButton("🔗 TÜM BONUSLAR", url=linkler["bonus"])],
+            [InlineKeyboardButton("🔄 YENİLE", callback_data="guncel_bonuslar")]
+        ]),
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+# 11. DİNAMİKPAY SİSTEMİ
 async def dinamikpay_yatir(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """DİNAMİKPAY yatırım ekranı"""
     query = update.callback_query
     await query.answer()
+    
+    linkler = await linkleri_guncelle()
     
     mesaj = f"""⚡ *DİNAMİKPAY SİSTEMİ* ⚡
 
@@ -183,389 +258,198 @@ async def dinamikpay_yatir(update: Update, context: ContextTypes.DEFAULT_TYPE):
 """
     
     for yontem, detay in DINAMIKPAY_SISTEMI["odemeler"].items():
-        mesaj += f"\n• *{yontem.upper().replace('_', ' ')}:*\n"
+        yontem_adi = yontem.upper().replace('_', ' ')
+        mesaj += f"\n• *{yontem_adi}:*\n"
         mesaj += f"  Komisyon: {detay['komisyon']}\n"
         mesaj += f"  Limit: {detay['limit']}\n"
         mesaj += f"  Süre: {detay['sure']}\n"
     
-    mesaj += f"\n🎁 *DİNAMİKPAY BONUSLARI:*\n"
-    for bonus, aciklama in DINAMIKPAY_SISTEMI["bonuslar"].items():
-        mesaj += f"• {aciklama}\n"
+    mesaj += f"\n🎁 *DİNAMİKPAY AVANTAJLARI:*\n"
+    for avantaj in DINAMIKPAY_SISTEMI["avantajlar"]:
+        mesaj += f"• {avantaj}\n"
     
-    mesaj += f"\n🔗 *Özel Link:* {DINAMIKPAY_LINK}"
-    
-    try:
-        await query.message.reply_photo(
-            photo=DINAMIK_GORSEL,
-            caption=mesaj,
-            reply_markup=dinamikpay_menu(),
-            parse_mode=ParseMode.MARKDOWN
-        )
-    except:
-        await query.edit_message_text(
-            mesaj,
-            reply_markup=dinamikpay_menu(),
-            parse_mode=ParseMode.MARKDOWN
-        )
-
-# 11. ÖDEME YÖNTEMLERİ
-async def papara_yatir(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await yatirim_yontemi(update, "PAPARA", "papara")
-
-async def jeton_yatir(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await yatirim_yontemi(update, "JETON", "jeton")
-
-async def cepbank_yatir(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await yatirim_yontemi(update, "CEPBANK", "cebbank")
-
-async def kredi_yatir(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await yatirim_yontemi(update, "KREDİ KARTI", "kredi_karti")
-
-async def bitcoin_yatir(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await yatirim_yontemi(update, "BITCOIN", "bitcoin")
-
-async def yatirim_yontemi(update: Update, yontem_adi: str, yontem_key: str):
-    """Yatırım yöntemi detayı"""
-    query = update.callback_query
-    await query.answer()
-    
-    detay = DINAMIKPAY_SISTEMI["odemeler"][yontem_key]
-    
-    mesaj = f"""💳 *{yontem_adi} İLE YATIRIM* 💳
-
-📋 *DETAYLAR:*
-• Komisyon: {detay['komisyon']}
-• Limit: {detay['limit']}
-• Süre: {detay['sure']}
-
-🎁 *BU YÖNTEME ÖZEL BONUS:*
-• İlk yatırım: %150 bonus
-• Tekrarlayan yatırımlar: %25 ekstra
-• VIP üyelik: %50 cashback
-
-📝 *ADIMLAR:*
-1. {DINAMIKPAY_LINK} adresine git
-2. '{yontem_adi}' seçeneğini seç
-3. Yatırmak istediğiniz tutarı girin
-4. Ödeme bilgilerinizi tamamlayın
-5. *ANINDA* hesabınıza geçsin!
-
-⚠️ *ÖNEMLİ:* Yatırım sonrası bonus otomatik eklenir.
-
-🔗 *Hemen Yatırım Yap:* {DINAMIKPAY_LINK}"""
+    mesaj += f"\n🔗 *Özel Link:* {linkler['dinamikpay']}"
+    mesaj += f"\n🕒 *Güncel Bonuslar:* {linkler['bonus']}"
     
     await query.message.reply_text(
         mesaj,
-        reply_markup=yatirim_sonrasi_menu(),
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("💳 PAPARA İLE YATIR", callback_data="papara_yatir")],
+            [InlineKeyboardButton("📱 JETON İLE YATIR", callback_data="jeton_yatir")],
+            [InlineKeyboardButton("🏦 CEPBANK İLE YATIR", callback_data="cebbank_yatir")],
+            [InlineKeyboardButton("🔙 ANA MENÜ", callback_data="ana_menu")]
+        ]),
         parse_mode=ParseMode.MARKDOWN
     )
 
-# 12. BAHİS SİSTEMİ
+# 12. SPOR BAHİS (GERÇEK ZAMANLI KANALDAN)
 async def spor_bahis(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Spor bahis ekranı"""
     query = update.callback_query
     await query.answer()
     
-    # Kanal son postunu getir
-    kanal_post = son_kanal_postu()
+    linkler = await linkleri_guncelle()
+    kanal_post = await telegram_kanal_son_post()
     
     mesaj = f"""⚽ *CANLI SPOR BAHİSLERİ* ⚽
 
 {kanal_post['text']}
 
-🎯 *ÖNERİLEN MAÇLAR:*
-1. Galatasaray - Fenerbahçe
-   ⚽ MS 1: 2.10 | X: 3.40 | 2: 3.20
-   
-2. Beşiktaş - Trabzonspor
-   ⚽ MS 1: 2.30 | X: 3.20 | 2: 3.00
-   
-3. Real Madrid - Barcelona
-   ⚽ MS 1: 2.00 | X: 3.60 | 2: 3.80
+📊 *GÜNCEL MAÇ ÖNERİLERİ:*
+1. Süper Lig maçları - Canlı bahis açık
+2. Avrupa kupaları - Yüksek oranlar
+3. Basketbol - NBA ve EuroLeague
+4. Tenis - Grand Slam turnuvaları
+
+🎯 *BAHİS TİPLERİ:*
+• Maç sonucu
+• İlk yarı/İkinci yarı
+• Toplam gol
+• Asya handikap
+• Canlı bahis
 
 💰 *BAHİS YAPMAK İÇİN:*
 1. Önce DİNAMİKPAY ile yatırım yap
-2. %150 bonusunuzu alın
+2. Bonuslarınızı alın
 3. Bahis yapmaya başlayın
 
-📊 *GÜNCEL ORANLAR:* {TELEGRAM_KANAL}
-🔗 *Bahis Yap:* {GIRIS_LINK}"""
-    
-    try:
-        await query.message.reply_photo(
-            photo=SPOR_GORSEL,
-            caption=mesaj,
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🎯 BAHİS YAP", url=GIRIS_LINK)],
-                [InlineKeyboardButton("⚡ YATIRIM YAP", callback_data="dinamikpay_yatir")],
-                [InlineKeyboardButton("📊 TÜM MAÇLAR", url=TELEGRAM_KANAL)]
-            ]),
-            parse_mode=ParseMode.MARKDOWN
-        )
-    except:
-        await query.edit_message_text(
-            mesaj,
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🎯 BAHİS YAP", url=GIRIS_LINK)],
-                [InlineKeyboardButton("⚡ YATIRIM YAP", callback_data="dinamikpay_yatir")]
-            ]),
-            parse_mode=ParseMode.MARKDOWN
-        )
-
-async def canli_bahis(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Canlı bahis ekranı"""
-    query = update.callback_query
-    await query.answer()
-    
-    mesaj = f"""🔥 *CANLI BAHİS - ANINDA KAZAN!* 🔥
-
-⚡ *ŞU AN OYNAYAN MAÇLAR:*
-• Galatasaray - Fenerbahçe (60')
-• Real Madrid - Barcelona (45')
-• Bayern Münih - Dortmund (30')
-
-🎯 *CANLI ORANLAR:*
-GS - FB: 1. Gol: 2.50 | Sonraki Gol: 1.90
-RM - BAR: Toplam Gol 2.5 Üst: 1.85
-BAY - DOR: İkinci Yarı Kazanan: 1.80
-
-💰 *CANLI BAHİS TAKTİKLERİ:*
-1. Maç gidişatını izle
-2. DİNAMİKPAY ile anında yatırım
-3. Canlı oranlarla bahis yap
-4. Anında kazan!
-
-📈 *CANLI İSTATİSTİKLER:* {TELEGRAM_KANAL}
-🔗 *Canlı Bahis:* {GIRIS_LINK}/live"""
+📈 *GÜNCEL ORANLAR:* {linkler['telegram_kanal']}
+🔗 *Bahis Yap:* {linkler['giris']}"""
     
     await query.message.reply_text(
         mesaj,
         reply_markup=InlineKeyboardMarkup([
-            [InlineKeyboardButton("🔥 CANLI BAHİS YAP", url=f"{GIRIS_LINK}/live")],
-            [InlineKeyboardButton("⚡ ANINDA YATIRIM", callback_data="dinamikpay_yatir")],
-            [InlineKeyboardButton("📊 CANLI SKOR", url=TELEGRAM_KANAL)]
+            [InlineKeyboardButton("🎯 BAHİS YAP", url=linkler["giris"])],
+            [InlineKeyboardButton("⚡ YATIRIM YAP", callback_data="dinamikpay_yatir")],
+            [InlineKeyboardButton("📊 GÜNCEL ORANLAR", url=linkler["telegram_kanal"])]
         ]),
         parse_mode=ParseMode.MARKDOWN
     )
 
-# 13. DİĞER MENÜLER
-async def bonuslar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# 13. BİLGİ GÜNCELLE
+async def guncelle(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Bilgileri yeniden tara"""
     query = update.callback_query
     await query.answer()
     
-    mesaj = f"""🎁 *STARZBET BONUS SİSTEMİ* 🎁
-
-🌟 *DİNAMİKPAY ÖZEL BONUSLAR:*
-• İlk DİNAMİKPAY Yatırımı: %150 BONUS
-• Her DİNAMİKPAY Yatırımı: %25 EKSTRA
-• DİNAMİKPAY VIP: %50 CASHBACK
-
-💰 *DİĞER BONUSLAR:*
-• Hoşgeldin Bonusu: %100 (max 5.000₺)
-• Slot Bonusu: %100 slot oyunlarında
-• Spor Bonusu: %100 spor bahislerinde
-• Kayıp İadesi: %35 kayıplarınıza
-• Arkadaş Davet: 500₺ her davet için
-
-⚡ *BONUS KULLANIMI:*
-1. DİNAMİKPAY ile yatırım yap
-2. Bonus otomatik hesabınıza eklenecek
-3. 30x çevrim şartını yerine getir
-4. Kazancınızı çekin!
-
-📌 *ŞARTLAR:*
-- Min yatırım: 100₺
-- Max bonus: 10.000₺
-- Çevrim: 30x
-- Süre: 30 gün
-
-🔗 *Tüm Bonuslar:* {BONUS_LINK}"""
+    guncelleme_msg = await query.message.reply_text("🔄 *Bilgiler güncelleniyor...*", parse_mode=ParseMode.MARKDOWN)
     
     try:
-        await query.message.reply_photo(
-            photo=BONUS_GORSEL,
-            caption=mesaj,
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("⚡ DİNAMİKPAY İLE YATIR", callback_data="dinamikpay_yatir")],
-                [InlineKeyboardButton("💰 BONUSLARIM", callback_data="bonuslarim")],
-                [InlineKeyboardButton("🔙 ANA MENÜ", callback_data="ana_menu")]
-            ]),
+        linkler = await linkleri_guncelle()
+        
+        await guncelleme_msg.edit_text(
+            f"✅ *Bilgiler Güncellendi!*\n\n"
+            f"• 🏷️ Site: {GUNCEL_VERILER.get('site_baslik', 'Starzbet')}\n"
+            f"• 🔗 Giriş: {linkler['giris']}\n"
+            f"• 🎁 Bonuslar: {len(GUNCEL_VERILER.get('bonuslar', []))} aktif kampanya\n"
+            f"• 🕒 Son Güncelleme: {GUNCEL_VERILER.get('son_guncelleme', 'Şimdi')}\n\n"
+            f"⚡ Artık en güncel bilgilerle hizmetinizdeyiz!",
             parse_mode=ParseMode.MARKDOWN
         )
-    except:
-        await query.edit_message_text(
-            mesaj,
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("⚡ DİNAMİKPAY İLE YATIR", callback_data="dinamikpay_yatir")],
-                [InlineKeyboardButton("🔙 ANA MENÜ", callback_data="ana_menu")]
-            ]),
-            parse_mode=ParseMode.MARKDOWN
-        )
-
-async def casino(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    
-    mesaj = """🎮 *CANLI CASİNO & SLOT* 🎮
-
-✨ *POPÜLER OYUNLAR:*
-• 🃏 Canlı Blackjack - %99.5 RTP
-• 🎡 Rulet - Gerçek krupiyelerle
-• 🎰 Gates of Olympus - x5000 Kazanç
-• 🎲 Baccarat - Hızlı ve heyecanlı
-• 🎯 Poker - Texas Hold'em
-
-🔥 *CASİNO BONUSLARI:*
-- İlk casino yatırımı: %200 BONUS
-- Canlı casino: %50 ekstra
-- Slot oyunları: %100 FREE SPIN
-- Her Cuma: %25 CASHBACK
-
-⚡ *NASIL OYNANIR:*
-1. DİNAMİKPAY ile yatırım yap
-2. %200 casino bonusunuzu alın
-3. Canlı krupiyelerle oynayın
-4. Büyük kazançlar elde edin
-
-🎯 *CANLI KRUPİYELER:* 7/24 hizmetinizde!
-🔗 *Casino'ya Git:* https://starzbet422.com/casino"""
-    
-    try:
-        await query.message.reply_photo(
-            photo=CASINO_GORSEL,
-            caption=mesaj,
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🎮 CANLI CASİNO", url="https://starzbet422.com/casino")],
-                [InlineKeyboardButton("⚡ YATIRIM YAP", callback_data="dinamikpay_yatir")],
-                [InlineKeyboardButton("🎰 SLOT OYUNLARI", callback_data="slot_oyunlari")]
-            ]),
-            parse_mode=ParseMode.MARKDOWN
-        )
-    except:
-        await query.edit_message_text(
-            mesaj,
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🎮 CANLI CASİNO", url="https://starzbet422.com/casino")],
-                [InlineKeyboardButton("⚡ YATIRIM YAP", callback_data="dinamikpay_yatir")]
-            ]),
+        
+    except Exception as e:
+        await guncelleme_msg.edit_text(
+            f"❌ *Güncelleme hatası:* {str(e)[:100]}\n\n"
+            f"Lütfen daha sonra tekrar deneyin.",
             parse_mode=ParseMode.MARKDOWN
         )
 
-async def mobile(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    
-    mesaj = """📱 *STARZBET MOBİL UYGULAMA* 📱
-
-🌟 *ÖZELLİKLER:*
-• ⚡ Süper hızlı arayüz
-• 📲 iOS 15+ & Android 8+ desteği
-• 🔔 Anlık bildirimler
-• 💳 DİNAMİKPAY entegrasyonu
-• 🎮 Akıcı casino deneyimi
-• ⚽ Canlı bahis akışı
-
-🔥 *MOBİL ÖZEL AVANTAJLAR:*
-- Mobil yatırım: %25 ekstra bonus
-- İlk mobil bahis: %50 free bet
-- Mobil casino: %30 cashback
-- App özel turnuvalar
-
-📥 *İNDİRME LİNKLERİ:*
-• Android APK: https://starzbet422.com/apk
-• iOS TestFlight: https://starzbet422.com/ios
-• APK Mirror: https://starzbet422.com/mirror
-
-⚠️ *NOT:* iOS uygulaması App Store'dan kaldırıldı, TestFlight ile indirin.
-
-📞 *MOBİL DESTEK:* @starzbetmobile"""
-    
-    try:
-        await query.message.reply_photo(
-            photo=MOBIL_GORSEL,
-            caption=mesaj,
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("📲 ANDROID İNDİR", url="https://starzbet422.com/apk")],
-                [InlineKeyboardButton("🍎 iOS İNDİR", url="https://starzbet422.com/ios")],
-                [InlineKeyboardButton("⚡ YATIRIM YAP", callback_data="dinamikpay_yatir")]
-            ]),
-            parse_mode=ParseMode.MARKDOWN
-        )
-    except:
-        await query.edit_message_text(
-            mesaj,
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("📲 ANDROID İNDİR", url="https://starzbet422.com/apk")],
-                [InlineKeyboardButton("🍎 iOS İNDİR", url="https://starzbet422.com/ios")]
-            ]),
-            parse_mode=ParseMode.MARKDOWN
-        )
-
-# 14. AI SİSTEMİ (DİNAMİKPAY ODAKLI)
+# 14. AKILLI AI SİSTEMİ (GÜNCEL VERİLERLE)
 async def ai_cevap(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Akıllı AI yanıt sistemi"""
+    """Güncel verilerle AI yanıt"""
     user_message = update.message.text.lower().strip()
     
-    # ÖNCE YEREL CEVAPLAR (DİNAMİKPAY ÖNCELİKLİ)
-    cevap = dinamikpay_odakli_cevap(user_message)
-    if cevap:
+    # Önce yerel cevaplar
+    if "güncel" in user_message or "bonus" in user_message or "kampanya" in user_message:
+        linkler = await linkleri_guncelle()
+        bonuslar = GUNCEL_VERILER.get("bonuslar", [])
+        
+        cevap = "🎁 *GÜNCEL BONUSLAR:*\n\n"
+        for i, bonus in enumerate(bonuslar[:3], 1):
+            cevap += f"{i}. {bonus}\n"
+        
+        cevap += f"\n🔗 Tüm bonuslar: {linkler['bonus']}"
+        cevap += f"\n⚡ Yatırım yap: {linkler['dinamikpay']}"
+        
         await update.message.reply_text(
             cevap,
-            reply_markup=dinamikpay_menu(),
             parse_mode=ParseMode.MARKDOWN
         )
         return
     
-    # BAHİS SORUSU MU?
-    if any(kelime in user_message for kelime in ["bahis", "oran", "maç", "iddaa", "spor"]):
-        kanal_post = son_kanal_postu()
+    elif any(kelime in user_message for kelime in ["bahis", "oran", "maç", "iddaa"]):
+        linkler = await linkleri_guncelle()
+        kanal_post = await telegram_kanal_son_post()
+        
         await update.message.reply_text(
-            f"⚽ *Bahis Sorunuza Cevap:*\n\n{kanal_post['text']}\n\n"
-            f"🔗 Güncel bahisler için: {TELEGRAM_KANAL}\n"
-            f"💰 Bahis yapmak için önce DİNAMİKPAY ile yatırım yapın!",
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("⚡ YATIRIM YAP", callback_data="dinamikpay_yatir")],
-                [InlineKeyboardButton("📊 BAHİSLER", url=TELEGRAM_KANAL)]
-            ]),
+            f"⚽ *Bahis Bilgisi:*\n\n"
+            f"{kanal_post['text']}\n\n"
+            f"📊 Güncel oranlar: {linkler['telegram_kanal']}\n"
+            f"💰 Bahis yap: {linkler['giris']}\n"
+            f"⚡ Önce yatırım yap: {linkler['dinamikpay']}",
             parse_mode=ParseMode.MARKDOWN
         )
         return
     
-    # AI YOKSA
+    elif any(kelime in user_message for kelime in ["yatırım", "yatır", "para yatır"]):
+        linkler = await linkleri_guncelle()
+        
+        await update.message.reply_text(
+            f"⚡ *DİNAMİKPAY İLE YATIRIM:*\n\n"
+            f"Hemen yatırım yap: {linkler['dinamikpay']}\n\n"
+            f"🎯 Avantajlar:\n"
+            f"• Anında onay\n"
+            f"• Sıfır komisyon\n"
+            f"• Özel bonuslar\n\n"
+            f"💳 Yöntemler: Papara, Jeton, Cepbank, Kredi Kartı, Bitcoin",
+            parse_mode=ParseMode.MARKDOWN
+        )
+        return
+    
+    # AI ile cevap
     if not client:
+        linkler = await linkleri_guncelle()
         await update.message.reply_text(
-            "🤖 *AI şu anda kullanılamıyor.*\n\n"
-            "⚡ *Önerim:* Hemen DİNAMİKPAY ile yatırım yapın!",
-            reply_markup=dinamikpay_menu(),
+            f"🤖 *AI şu anda kullanılamıyor.*\n\n"
+            f"⚡ Hemen DİNAMİKPAY ile yatırım yapın: {linkler['dinamikpay']}",
             parse_mode=ParseMode.MARKDOWN
         )
         return
     
-    # AI İLE CEVAP
-    thinking_msg = await update.message.reply_text("⚡ *DİNAMİKPAY kontrol ediliyor...*", parse_mode=ParseMode.MARKDOWN)
+    thinking_msg = await update.message.reply_text("🤔 *Cevap hazırlanıyor...*", parse_mode=ParseMode.MARKDOWN)
     
     try:
-        system_prompt = f"""Sen Starzbet'in DİNAMİKPAY odaklı AI asistanısın.
+        linkler = await linkleri_guncelle()
+        bonuslar = GUNCEL_VERILER.get("bonuslar", [])
+        
+        system_prompt = f"""Sen Starzbet'in güncel AI asistanısın. Aşağıdaki GERÇEK ZAMANLI bilgileri kullan:
 
-ÖNEMLİ BİLGİLER:
-• DİNAMİKPAY Linki: {DINAMIKPAY_LINK}
-• Bonus Linki: {BONUS_LINK}
-• Telegram Kanalı: {TELEGRAM_KANAL}
-• Canlı Destek: {CANLI_DESTEK}
-• Giriş Linki: {GIRIS_LINK}
+GÜNCEL SİTE BİLGİLERİ:
+• Site: {GUNCEL_VERILER.get('site_baslik', 'Starzbet')}
+• Giriş Linki: {linkler['giris']}
+• Bonus Linki: {linkler['bonus']}
+• Son Güncelleme: {GUNCEL_VERILER.get('son_guncelleme', 'Bilinmiyor')}
+
+GÜNCEL BONUSLAR (Siteden alındı):
+{chr(10).join(bonuslar[:5])}
 
 DİNAMİKPAY SİSTEMİ:
-{KisaBilgi()}
+• Link: {linkler['dinamikpay']}
+• Özellikler: Anında yatırım, sıfır komisyon, özel bonuslar
+
+TELEGRAM KANALI:
+• Link: {linkler['telegram_kanal']}
+• İçerik: Güncel bahis oranları, kampanyalar
 
 KURALLAR:
-1. HER SORUDA DİNAMİKPAY'I ÖNE ÇIKAR
-2. "yatırım yapacam" diyene HEMEN DİNAMİKPAY linki ver
-3. Bahis sorana Telegram kanalındaki son postu söyle
-4. Bonus sorana DİNAMİKPAY bonuslarını anlat
-5. Kısa, net, satış odaklı cevaplar ver
-6. Her cevabın sonuna DİNAMİKPAY teşviki ekle
+1. HER CEVAPTA güncelliği vurgula
+2. Bonus sorana GERÇEK bonusları söyle
+3. Bahis sorana Telegram kanalına yönlendir
+4. Yatırım sorana DİNAMİKPAY linkini ver
+5. Linkleri markdown formatında ver
+6. Kısa, net, güncel bilgiler ver
 
-Şimdi kullanıcı şunu soruyor:"""
+Kullanıcı şunu soruyor:"""
         
         completion = client.chat.completions.create(
             messages=[
@@ -573,19 +457,18 @@ KURALLAR:
                 {"role": "user", "content": user_message}
             ],
             model="llama-3.3-70b-versatile",
-            temperature=0.8,
-            max_tokens=350
+            temperature=0.7,
+            max_tokens=300
         )
         
         await thinking_msg.delete()
         ai_response = completion.choices[0].message.content
         
-        # DİNAMİKPAY mesajı ekle
-        final_response = f"{ai_response}\n\n💡 *Öneri:* Kazancınızı artırmak için hemen DİNAMİKPAY ile yatırım yapın!"
+        # Güncelleme bilgisi ekle
+        final_response = f"{ai_response}\n\n🔄 *Son Güncelleme:* {GUNCEL_VERILER.get('son_guncelleme', 'Bilinmiyor')}"
         
         await update.message.reply_text(
-            f"🤖 *Starzbet AI:*\n\n{final_response}",
-            reply_markup=dinamikpay_menu(),
+            f"🤖 *Starzbet AI (Güncel):*\n\n{final_response}",
             parse_mode=ParseMode.MARKDOWN
         )
         
@@ -596,68 +479,160 @@ KURALLAR:
         except:
             pass
         
+        linkler = await linkleri_guncelle()
         await update.message.reply_text(
-            f"❌ *Üzgünüm, bir hata oluştu.*\n\n"
-            f"⚡ *Hemen DİNAMİKPAY ile yatırım yaparak başlayın:* {DINAMIKPAY_LINK}",
-            reply_markup=dinamikpay_menu(),
+            f"❌ *AI yanıt hatası.*\n\n"
+            f"⚡ *Güncel bilgiler:*\n"
+            f"• Site: {linkler['giris']}\n"
+            f"• Bonuslar: {linkler['bonus']}\n"
+            f"• DİNAMİKPAY: {linkler['dinamikpay']}",
             parse_mode=ParseMode.MARKDOWN
         )
 
-def dinamikpay_odakli_cevap(soru):
-    """DİNAMİKPAY odaklı yerel cevaplar"""
-    soru = soru.lower()
+# 15. BUTON HANDLER'LARI
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Buton tıklamalarını yönet"""
+    query = update.callback_query
+    await query.answer()
     
-    # DİNAMİKPAY ve YATIRIM SORULARI
-    if any(kelime in soru for kelime in ["yatırım", "yatır", "para yatır", "deposit", "ödeme"]):
-        return f"""⚡ *DİNAMİKPAY İLE YATIRIM* ⚡
-
-Hemen yatırım yapmak için: {DINAMIKPAY_LINK}
-
-🎯 *AVANTAJLAR:*
-• %150 İlk Yatırım Bonusu
-• Sıfır Komisyon
-• Anında Hesaba Geçiş
-• 7/24 Aktif
-
-💳 *YÖNTEMLER:* Papara, Jeton, Cepbank, Kredi Kartı, Bitcoin
-
-🔗 *Hemen Başla:* {DINAMIKPAY_LINK}"""
+    data = query.data
     
-    elif any(kelime in soru for kelime in ["bonus", "kampanya", "promosyon"]):
-        return f"""🎁 *DİNAMİKPAY ÖZEL BONUSLAR* 🎁
+    if data == "guncel_bonuslar":
+        await guncel_bonuslar(update, context)
+    elif data == "dinamikpay_yatir":
+        await dinamikpay_yatir(update, context)
+    elif data == "spor_bahis":
+        await spor_bahis(update, context)
+    elif data == "guncelle":
+        await guncelle(update, context)
+    elif data == "ana_menu":
+        linkler = await linkleri_guncelle()
+        await query.message.reply_text(
+            "🏠 *Ana Menüye Döndünüz*",
+            reply_markup=ana_menu(linkler),
+            parse_mode=ParseMode.MARKDOWN
+        )
+    elif data in ["papara_yatir", "jeton_yatir", "cebbank_yatir"]:
+        linkler = await linkleri_guncelle()
+        yontem = data.replace("_yatir", "").upper()
+        await query.message.reply_text(
+            f"💳 *{yontem} İLE YATIRIM*\n\n"
+            f"🔗 Hemen yatırım yap: {linkler['dinamikpay']}\n\n"
+            f"⚡ Avantajlar:\n"
+            f"• Anında onay\n"
+            f"• Sıfır komisyon\n"
+            f"• Özel {yontem} bonusu\n\n"
+            f"📞 Sorunuz varsa canlı desteğe başvurun.",
+            parse_mode=ParseMode.MARKDOWN
+        )
 
-• İlk DİNAMİKPAY Yatırımı: %150 BONUS
-• Her DİNAMİKPAY Yatırımı: %25 EKSTRA
-• DİNAMİKPAY VIP: %50 CASHBACK
-
-🔗 Tüm bonuslar: {BONUS_LINK}
-⚡ Yatırım yap: {DINAMIKPAY_LINK}"""
+# 16. DİĞER MENÜLER
+async def casino(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
     
-    elif any(kelime in soru for kelime in ["merhaba", "selam", "hi", "hello", "naber"]):
-        karsilama = random.choice(KARSILAMA_MESAJLARI)
-        return f"""{karsilama}
-
-⚡ *İlk adım:* DİNAMİKPAY ile yatırım yapın!
-🔗 {DINAMIKPAY_LINK}"""
+    linkler = await linkleri_guncelle()
     
-    elif any(kelime in soru for kelime in ["giriş", "link", "site", "url"]):
-        return f"""🔗 *GİRİŞ LİNKLERİ:*
+    await query.message.reply_text(
+        f"""🎮 *CANLI CASİNO* 🎮
 
-• Ana Giriş: {GIRIS_LINK}
-• DİNAMİKPAY: {DINAMIKPAY_LINK}
-• Bonuslar: {BONUS_LINK}
-• Telegram: {TELEGRAM_KANAL}
+✨ *Popüler Oyunlar:*
+• Canlı Blackjack
+• Rulet
+• Slot Makineleri
+• Baccarat
+• Poker
 
-⚡ *Öneri:* Önce DİNAMİKPAY ile yatırım yapın!"""
+🎰 *Casino Bonusları:*
+• İlk casino yatırımı: %200 bonus
+• Canlı casino: %50 ekstra
+• Slot: %100 free spin
+
+⚡ *Nasıl Oynanır:*
+1. {linkler['dinamikpay']} ile yatırım yap
+2. Bonusunuzu alın
+3. Casino'da oynamaya başlayın
+
+🔗 *Casino'ya Git:* {linkler['giris']}/casino""",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("🎮 CASİNO'YA GİT", url=f"{linkler['giris']}/casino")],
+            [InlineKeyboardButton("⚡ YATIRIM YAP", callback_data="dinamikpay_yatir")]
+        ]),
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+async def mobile(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
     
-    elif any(kelime in soru for kelime in ["destek", "yardım", "iletişim"]):
-        return f"""📞 *DESTEK SEÇENEKLERİ:*
-
-• Canlı Destek: {CANLI_DESTEK}
-• Telegram: @starzbetsupport
-• E-posta: destek@starzbet.com
-
-⚡ *Öncelik:* Yatırım işlemleriniz için DİNAMİKPAY sistemimizi kullanın!"""
+    linkler = await linkleri_guncelle()
     
-    elif any(kelime in soru for kelime in ["nasıl", "yapılır", "kayıt", "üye"]):
-        return f"""📝 *KAYIT & YAT
+    await query.message.reply_text(
+        f"""📱 *MOBİL UYGULAMA* 📱
+
+📲 *İndirme Linkleri:*
+• Android APK: {linkler['giris']}/apk
+• iOS TestFlight: {linkler['giris']}/ios
+
+🌟 *Mobil Özellikler:*
+• Hızlı arayüz
+• DİNAMİKPAY entegrasyonu
+• Canlı bildirimler
+• Akıcı casino
+
+⚡ *Mobil Bonus:*
+• İlk mobil yatırım: %25 ekstra
+• Mobil bahis: %50 free bet
+
+🔗 *İndir ve kazanmaya başla!*""",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("📲 ANDROID İNDİR", url=f"{linkler['giris']}/apk")],
+            [InlineKeyboardButton("🍎 iOS İNDİR", url=f"{linkler['giris']}/ios")]
+        ]),
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+# 17. ANA PROGRAM
+async def main():
+    logging.basicConfig(
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        level=logging.INFO
+    )
+    
+    print("🚀 Bot başlatılıyor...")
+    
+    # İlk taramayı yap
+    print("📡 Site ilk taraması yapılıyor...")
+    global GUNCEL_VERILER
+    GUNCEL_VERILER = await siteyi_tara()
+    
+    print(f"✅ Site tarandı: {GUNCEL_VERILER.get('site_baslik', 'Starzbet')}")
+    print(f"✅ {len(GUNCEL_VERILER.get('bonuslar', []))} bonus bulundu")
+    
+    try:
+        app = Application.builder().token(TOKEN).build()
+        
+        # Handler'ları ekle
+        app.add_handler(CommandHandler("start", start))
+        app.add_handler(CallbackQueryHandler(button_handler))
+        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, ai_cevap))
+        
+        # Özel butonlar
+        app.add_handler(CallbackQueryHandler(casino, pattern="^casino$"))
+        app.add_handler(CallbackQueryHandler(mobile, pattern="^mobile$"))
+        
+        print("✅ Bot hazır!")
+        print("🌐 Site bilgileri güncel")
+        print("🤖 AI sistemi hazır")
+        print("📱 Telegram'da /start yazın")
+        
+        # Botu başlat
+        await app.run_polling(drop_pending_updates=True)
+        
+    except Exception as e:
+        print(f"❌ Hata: {type(e).__name__}")
+        print(f"📝 Detay: {str(e)[:200]}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    asyncio.run(main())
