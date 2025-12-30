@@ -1,125 +1,113 @@
 import os
 import sys
 import logging
-import random
 from datetime import datetime
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 from telegram.constants import ParseMode
 import requests
-from bs4 import BeautifulSoup
-import re
+import json
 
 print("=" * 80)
-print("🚀 STARZBET RESMİ BOT - STARZBET422.COM KAYNAKLI")
+print("🚀 STARZBET AI BOT - KONTROLLÜ VERSİYON")
 print("=" * 80)
 
-# TOKEN
+# TOKEN ve AI ANAHTARI
 TOKEN = os.environ.get("TELEGRAM_TOKEN", "8031564377:AAHjJXBQ-b6f0BnKdbf6T7iwUjs1fCA7dW0")
+OPENAI_KEY = os.environ.get("OPENAI_KEY", "")  # Kendi OpenAI keyini koy
 
-# STARZBET422.COM'DAN VERİ ÇEKME FONKSİYONU
-def starzbet_sitesinden_veri_cek():
-    """Starzbet422.com'dan güncel verileri çeker"""
-    try:
-        # Ana sayfayı çek
-        response = requests.get("https://starzbet422.com", timeout=10)
-        response.raise_for_status()
-        
-        soup = BeautifulSoup(response.content, 'html.parser')
-        
-        # Bonusları çek (site yapısına göre güncelleyebilirsin)
-        bonuslar = []
-        # Promosyon sayfasından bonusları çek
-        try:
-            promos_response = requests.get("https://starzbet422.com/tr-tr/info/promos", timeout=10)
-            promos_soup = BeautifulSoup(promos_response.content, 'html.parser')
-            
-            # Bonus başlıklarını bul (CSS selector'ları siteye göre ayarlanmalı)
-            bonus_elements = promos_soup.select('.promotion-item, .bonus-item, .offer-title')
-            for element in bonus_elements[:5]:  # İlk 5 bonusu al
-                text = element.get_text(strip=True)
-                if text and len(text) > 5:
-                    bonuslar.append(f"🎁 {text}")
-        except:
-            pass
-        
-        # Eğer bonus bulamazsak, varsayılan bonuslar
-        if not bonuslar:
-            bonuslar = [
-                "🎁 HOŞGELDİN BONUSU: İlk yatırımınıza bonus",
-                "🎰 CASINO BONUSU: Canlı casino oyunlarında bonus",
-                "⚽ SPOR BONUSU: Spor bahislerinde ekstra kazanç",
-                "✨ KAYIP İADESİ: Seçili oyunlarda iade",
-                "🔥 TEKRAR YATIRIM: Her yatırımda ekstra"
-            ]
-        
-        return {
-            "site_baslik": "Starzbet422.com - Resmi Bahis Sitesi",
-            "bonuslar": bonuslar,
-            "son_guncelleme": datetime.now().strftime("%d.%m.%Y %H:%M"),
-            "site_aktif": True
-        }
-    except Exception as e:
-        print(f"⚠️ Site verisi çekilemedi: {e}")
-        return {
-            "site_baslik": "Starzbet422.com - Resmi Bahis Sitesi",
-            "bonuslar": [
-                "🎁 Site güncelleniyor, lütfen canlı destekle iletişime geçin"
-            ],
-            "son_guncelleme": datetime.now().strftime("%d.%m.%Y %H:%M"),
-            "site_aktif": False
-        }
-
-# GÜNCEL VERİLER (HER SEFERİNDE SİTEDEN ÇEKİLECEK)
-def get_guncel_veriler():
-    return starzbet_sitesinden_veri_cek()
-
-# LİNKLER (SADECE STARZBET422.COM LİNKLERİ)
-LINKLER = {
-    "ana_site": "https://starzbet422.com",
-    "giris": "https://starzbet422.com",
-    "bonus": "https://starzbet422.com/tr-tr/info/promos",
-    "telegram_kanal": "https://t.me/Starzbetgir",
-    "canli_destek": "https://service.3kanumaigc.com/chatwindow.aspx?siteId=90005302&planId=1b050682-cde5-4176-8236-3bb94c891197#",
-    "casino": "https://starzbet422.com/casino",
-    "spor": "https://starzbet422.com/sports",
-    "mobile_apk": "https://starzbet422.com/apk",
+# STARZBET BİLGİLERİ
+STARZBET_BILGILERI = {
+    "resmi_site": "https://starzbet422.com",
+    "bonus_sayfasi": "https://starzbet422.com/tr-tr/info/promos",
+    "spor_bahis": "https://starzbet422.com/sports",
     "canli_casino": "https://starzbet422.com/live-casino",
+    "casino": "https://starzbet422.com/casino",
+    "mobile_apk": "https://starzbet422.com/apk",
+    "telegram": "https://t.me/Starzbetgir",
+    "canli_destek": "https://service.3kanumaigc.com/chatwindow.aspx?siteId=90005302&planId=1b050682-cde5-4176-8236-3bb94c891197#",
     "giris_problem": "https://starzbet422.com/tr-tr/info/access"
 }
 
-# MENÜLER
+# AI SİSTEM PROMPT'İ (ÇOK ÖNEMLİ!)
+AI_SYSTEM_PROMPT = """Sen Starzbet422.com'un resmi AI asistanısın. SADECE aşağıdaki konularda yardımcı olabilirsin:
+
+🚨 **KURALLAR:**
+1. SADECE starzbet422.com hakkında konuş
+2. BAŞKA site önerme, link verme
+3. Bonus, bahis, casino, yatırım/çekim, giriş konularında yardım et
+4. Bilmediğin bir şey sorulursa "Canlı destekle iletişime geçin" de
+
+📌 **VERİLECEK LİNKLER (SADECE BUNLAR):**
+- Resmi site: https://starzbet422.com
+- Bonuslar: https://starzbet422.com/tr-tr/info/promos
+- Spor bahis: https://starzbet422.com/sports
+- Canlı casino: https://starzbet422.com/live-casino
+- Telegram: https://t.me/Starzbetgir
+- Canlı destek: https://service.3kanumaigc.com/chatwindow.aspx?siteId=90005302&planId=1b050682-cde5-4176-8236-3bb94c891197#
+- Giriş sorunu: https://starzbet422.com/tr-tr/info/access
+- APK: https://starzbet422.com/apk
+
+💬 **KONUŞMA TARZI:**
+- Kanka, dostum gibi samimi ama profesyonel konuş
+- Kısa ve net cevaplar ver
+- Emoji kullan (🎰, ⚽, 🎁, 🔗)
+- Linkleri her zaman ver
+
+❌ **YAPMA:**
+- Starzbet dışında site önerme
+- Hayali bonus uydurma
+- Yanlış bilgi verme
+- Politik/uyuşturucu konulara girme"""
+
+# MENÜ
 def ana_menu():
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("🔗 RESMİ SİTEYE GİT", url=LINKLER["ana_site"])],
-        [InlineKeyboardButton("💰 GÜNCEL BONUSLAR", callback_data="guncel_bonuslar")],
-        [InlineKeyboardButton("🎮 CANLI CASİNO", url=LINKLER["canli_casino"]),
-         InlineKeyboardButton("⚽ SPOR BAHİS", url=LINKLER["spor"])],
-        [InlineKeyboardButton("📱 MOBİL UYGULAMA", url=LINKLER["mobile_apk"]),
-         InlineKeyboardButton("🎧 CANLI DESTEK", url=LINKLER["canli_destek"])],
-        [InlineKeyboardButton("🚨 GİRİŞ PROBLEMİ", url=LINKLER["giris_problem"])]
+        [InlineKeyboardButton("🔗 RESMİ SİTE", url=STARZBET_BILGILERI["resmi_site"])],
+        [InlineKeyboardButton("💰 BONUSLAR", callback_data="bonuslar"),
+         InlineKeyboardButton("⚽ SPOR", url=STARZBET_BILGILERI["spor_bahis"])],
+        [InlineKeyboardButton("🎮 CASİNO", url=STARZBET_BILGILERI["canli_casino"]),
+         InlineKeyboardButton("📱 APK", url=STARZBET_BILGILERI["mobile_apk"])],
+        [InlineKeyboardButton("🎧 CANLI DESTEK", url=STARZBET_BILGILERI["canli_destek"]),
+         InlineKeyboardButton("📢 TELEGRAM", url=STARZBET_BILGILERI["telegram"])],
+        [InlineKeyboardButton("🤖 AI İLE KONUŞ", callback_data="ai_chat")]
     ])
 
-# /start KOMUTU
+def chat_menu():
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("💰 BONUS SOR", callback_data="soru_bonus"),
+         InlineKeyboardButton("⚽ BAHİS SOR", callback_data="soru_bahis")],
+        [InlineKeyboardButton("🎮 CASİNO SOR", callback_data="soru_casino"),
+         InlineKeyboardButton("💳 YATIRIM SOR", callback_data="soru_yatirim")],
+        [InlineKeyboardButton("🔗 LİNK İSTE", callback_data="soru_link"),
+         InlineKeyboardButton("🎧 CANLI DESTEK", url=STARZBET_BILGILERI["canli_destek"])],
+        [InlineKeyboardButton("🔙 ANA MENÜ", callback_data="ana_menu")]
+    ])
+
+# /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    veriler = get_guncel_veriler()
+    ai_durum = "✅ Aktif" if OPENAI_KEY else "❌ Devre Dışı"
     
-    mesaj = f"""🌟 *Starzbet422.com Resmi Asistanı* 🌟
+    mesaj = f"""🌟 *STARZBET422.COM AI ASİSTANI* 🌟
 
-🔄 *Veriler:* {veriler['son_guncelleme']}
-📊 *Kaynak:* starzbet422.com
+🤖 *AI Durumu:* {ai_durum}
+🕒 *Son Güncelleme:* {datetime.now().strftime("%d.%m.%Y %H:%M")}
 
-🏆 *RESMİ BİLGİLER:*
-• Tüm bilgiler starzbet422.com'dan alınmaktadır
-• Güncel bonuslar ve kampanyalar
-• Resmi giriş adresleri
+🎯 *NELER YAPABİLİRİM:*
+• Starzbet bonuslarını anlatırım
+• Bahis ve casino konularında yardım ederim
+• Gerekli linkleri veririm
+• Samimi sohbet ederim
 
-⚠️ *DİKKAT:*
-• Sadece starzbet422.com resmi sitemizdir
-• Başka site önermiyoruz
-• Tüm sorularınız için canlı destek
+🚫 *NELER YAPMAM:*
+• Başka site önermem
+• Yanlış bilgi vermem
+• Starzbet dışında konuşmam
 
-🔗 *Resmi Site:* {LINKLER['ana_site']}"""
+💬 *AI ile konuşmak için:* "AI İLE KONUŞ" butonuna bas
+🎧 *Canlı insan için:* Canlı Destek butonu
+
+🔗 *Resmi Site:* {STARZBET_BILGILERI['resmi_site']}"""
     
     await update.message.reply_text(
         mesaj,
@@ -127,71 +115,103 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN
     )
 
-# GÜNCEL BONUSLAR (SİTEDEN ÇEKİLEN)
-async def guncel_bonuslar(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
+# AI CHAT FONKSİYONU
+async def ai_cevap_ver(kullanici_sorusu, chat_history=None):
+    """OpenAI ile kontrollü cevap ver"""
     
-    veriler = get_guncel_veriler()
+    if not OPENAI_KEY:
+        return "🤖 AI şu anda aktif değil. Lütfen butonları kullanın veya canlı desteğe başvurun."
     
-    bonus_mesaji = f"🎁 *STARZBET422.COM GÜNCEL BONUSLARI* 🎁\n\n"
-    bonus_mesaji += f"🕒 *Son Güncelleme:* {veriler['son_guncelleme']}\n\n"
+    try:
+        # Chat history oluştur
+        messages = [
+            {"role": "system", "content": AI_SYSTEM_PROMPT}
+        ]
+        
+        # Eski konuşmaları ekle
+        if chat_history:
+            messages.extend(chat_history[-6:])  # Son 6 mesajı al
+        
+        # Kullanıcı sorusunu ekle
+        messages.append({"role": "user", "content": kullanici_sorusu})
+        
+        # OpenAI API çağrısı
+        headers = {
+            "Authorization": f"Bearer {OPENAI_KEY}",
+            "Content-Type": "application/json"
+        }
+        
+        data = {
+            "model": "gpt-3.5-turbo",
+            "messages": messages,
+            "temperature": 0.7,
+            "max_tokens": 300
+        }
+        
+        response = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers=headers,
+            json=data,
+            timeout=30
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            ai_response = result["choices"][0]["message"]["content"]
+            return ai_response
+        else:
+            return f"⚠️ AI yanıt vermedi. Lütfen canlı desteğe başvurun: {STARZBET_BILGILERI['canli_destek']}"
+            
+    except Exception as e:
+        print(f"AI Hatası: {e}")
+        return f"🤖 Teknik sorun. Canlı destek: {STARZBET_BILGILERI['canli_destek']}"
+
+# MESAJ HANDLER
+async def mesaj_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    user_message = update.message.text
     
-    for bonus in veriler["bonuslar"]:
-        bonus_mesaji += f"• {bonus}\n"
+    # Kullanıcının chat geçmişini al veya oluştur
+    if 'chat_history' not in context.user_data:
+        context.user_data['chat_history'] = []
     
-    bonus_mesaji += f"\n🔗 *Tüm bonuslar:* {LINKLER['bonus']}"
-    bonus_mesaji += f"\n\n⚠️ *Bonus kuralları için:* {LINKLER['canli_destek']}"
+    # AI ile cevap ver
+    ai_response = await ai_cevap_ver(user_message, context.user_data['chat_history'])
     
-    await query.message.reply_text(
-        bonus_mesaji,
-        reply_markup=ana_menu(),
+    # Geçmişe ekle
+    context.user_data['chat_history'].append({"role": "user", "content": user_message})
+    context.user_data['chat_history'].append({"role": "assistant", "content": ai_response})
+    
+    # Geçmişi sınırla (max 10 mesaj)
+    if len(context.user_data['chat_history']) > 10:
+        context.user_data['chat_history'] = context.user_data['chat_history'][-10:]
+    
+    await update.message.reply_text(
+        ai_response,
+        reply_markup=chat_menu(),
         parse_mode=ParseMode.MARKDOWN
     )
 
-# MESAJ HANDLER - SADECE STARZBET422.COM'A ÖZEL
-async def mesaj_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_message = update.message.text.lower()
-    veriler = get_guncel_veriler()
+# HIZLI SORULAR İÇİN
+async def hizli_soru(update: Update, context: ContextTypes.DEFAULT_TYPE, soru_tipi):
+    query = update.callback_query
+    await query.answer()
     
-    # SADECE BELİRLİ KONULARDA CEVAP VER
-    anahtar_kelimeler = {
-        "bonus": f"🎁 *Bonuslar:*\n\n" + "\n".join(veriler["bonuslar"][:3]) + f"\n\n🔗 Tüm bonuslar: {LINKLER['bonus']}",
-        "yatırım": f"💰 *Yatırım için:*\n\n{LINKLER['ana_site']} adresine gidin ve 'Para Yatır' butonuna tıklayın.\n\n⚠️ Canlı destek: {LINKLER['canli_destek']}",
-        "para yatır": f"💰 *Para Yatırma:*\n\n{LINKLER['ana_site']}\n\nCanlı destekten yardım alın: {LINKLER['canli_destek']}",
-        "çekim": f"💳 *Para Çekme:*\n\n{LINKLER['ana_site']} → 'Para Çek'\n\n⚠️ Detaylar için canlı destek: {LINKLER['canli_destek']}",
-        "bahis": f"⚽ *Spor Bahisleri:*\n\n{LINKLER['spor']}\n\n🎯 Canlı bahis ve oranlar",
-        "casino": f"🎮 *Canlı Casino:*\n\n{LINKLER['canli_casino']}\n\n✨ Slot, rulet, blackjack",
-        "giriş": f"🔗 *Resmi Giriş:*\n\n{LINKLER['giris']}\n\n🚨 Sorun yaşarsanız: {LINKLER['giris_problem']}",
-        "link": f"🔗 *Resmi Linkler:*\n\n• Ana Site: {LINKLER['ana_site']}\n• Spor: {LINKLER['spor']}\n• Casino: {LINKLER['canli_casino']}",
-        "telegram": f"📢 *Telegram Kanalı:*\n\n{LINKLER['telegram_kanal']}\n\n⚡ Güncel duyurular ve oranlar",
-        "mobile": f"📱 *Mobil Uygulama:*\n\n{LINKLER['mobile_apk']}\n\nAndroid cihazlar için APK",
-        "apk": f"📱 *APK İndir:*\n\n{LINKLER['mobile_apk']}\n\nStarzbet mobil uygulaması",
-        "merhaba": "🌟 *Merhaba!* Starzbet422.com resmi asistanına hoş geldiniz! 🎰\n\nNasıl yardımcı olabilirim?",
-        "selam": "👋 *Selam!* Starzbet422.com için buradayım!\n\nİhtiyacın olan bir şey var mı?",
-        "yardım": f"🆘 *Yardım Merkezi:*\n\n1. Teknik sorun: {LINKLER['canli_destek']}\n2. Giriş sorunu: {LINKLER['giris_problem']}\n3. Bonus soruları: {LINKLER['bonus']}\n\n⚠️ Tüm detaylar için canlı destekle iletişime geçin.",
-        "özel oran": f"🎯 *Özel Oranlar:*\n\nGüncel özel oranlar için Telegram kanalımızı takip edin:\n{LINKLER['telegram_kanal']}\n\nVeya siteyi ziyaret edin: {LINKLER['spor']}",
-        "oran": f"📊 *Bahis Oranları:*\n\n{LINKLER['spor']}\n\n⚽ Tüm sporlar ve canlı oranlar"
+    sorular = {
+        "bonus": "Starzbet'te şu anki bonuslar neler? Hoşgeldin bonusu var mı?",
+        "bahis": "Spor bahislerinde özel oran nasıl alınır? Canlı bahis var mı?",
+        "casino": "Canlı casino oyunları neler? Rulet ve blackjack bonusu var mı?",
+        "yatirim": "Para yatırma yöntemleri neler? Komisyon alınıyor mu?",
+        "link": "Starzbet giriş linki, APK indirme ve Telegram kanalı linklerini verir misin?"
     }
     
-    # ANAHTAR KELİME KONTROLÜ
-    for kelime, cevap in anahtar_kelimeler.items():
-        if kelime in user_message:
-            await update.message.reply_text(
-                cevap,
-                parse_mode=ParseMode.MARKDOWN
-            )
-            return
-    
-    # EĞER ANLAMADIYSA CANLI DESTEĞE YÖNLENDİR
-    await update.message.reply_text(
-        f"❓ *Anlayamadım*\n\n"
-        f"Lütfen aşağıdaki konulardan birini sorun:\n"
-        f"• bonus\n• yatırım\n• bahis\n• casino\n• giriş\n• mobile\n\n"
-        f"Veya doğrudan canlı desteğe bağlanın:\n"
-        f"🎧 {LINKLER['canli_destek']}",
-        parse_mode=ParseMode.MARKDOWN
-    )
+    if soru_tipi in sorular:
+        ai_response = await ai_cevap_ver(sorular[soru_tipi])
+        await query.message.reply_text(
+            ai_response,
+            reply_markup=chat_menu(),
+            parse_mode=ParseMode.MARKDOWN
+        )
 
 # BUTON HANDLER
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -200,20 +220,65 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     data = query.data
     
-    if data == "guncel_bonuslar":
-        veriler = get_guncel_veriler()
-        
-        bonus_mesaji = f"🎁 *GÜNCEL BONUSLAR* 🎁\n\n"
-        for bonus in veriler["bonuslar"]:
-            bonus_mesaji += f"• {bonus}\n"
-        
-        bonus_mesaji += f"\n🔗 {LINKLER['bonus']}"
-        
+    if data == "bonuslar":
         await query.message.reply_text(
-            bonus_mesaji,
+            f"🎁 *STARZBET BONUSLARI* 🎁\n\n"
+            f"🔗 Tüm bonuslar: {STARZBET_BILGILERI['bonus_sayfasi']}\n\n"
+            f"💬 Bonus detayları için AI ile konuşabilir veya canlı desteğe başvurabilirsin.",
             reply_markup=ana_menu(),
             parse_mode=ParseMode.MARKDOWN
         )
+    
+    elif data == "ai_chat":
+        await query.message.reply_text(
+            "💬 *AI İLE KONUŞMA MODU* 💬\n\n"
+            "🤖 Şimdi bana Starzbet ile ilgili ne sormak istersin?\n\n"
+            "🎯 *Örnek sorular:*\n"
+            "• Bonuslar neler?\n"
+            "• Nasıl para yatırabilirim?\n"
+            "• Casino oyunları neler?\n"
+            "• Bahis oranları nasıl?\n\n"
+            "🚫 *Dikkat:* Sadece Starzbet konularında yardımcı olabilirim.",
+            reply_markup=chat_menu(),
+            parse_mode=ParseMode.MARKDOWN
+        )
+    
+    elif data == "ana_menu":
+        await query.message.reply_text(
+            "🔙 *Ana Menüye Döndünüz* 🔙\n\n"
+            "Yardıma ihtiyacın olan bir şey var mı kanka?",
+            reply_markup=ana_menu(),
+            parse_mode=ParseMode.MARKDOWN
+        )
+    
+    elif data.startswith("soru_"):
+        soru_tipi = data.replace("soru_", "")
+        await hizli_soru(update, context, soru_tipi)
+
+# KOMUTLAR
+async def komut_reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Chat geçmişini temizle"""
+    if 'chat_history' in context.user_data:
+        context.user_data['chat_history'] = []
+    
+    await update.message.reply_text(
+        "🔄 *Chat geçmişi temizlendi!*\n\n"
+        "Yeni bir konuşmaya başlayabiliriz kanka!",
+        reply_markup=ana_menu(),
+        parse_mode=ParseMode.MARKDOWN
+    )
+
+async def komut_destek(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Canlı destek bilgisi"""
+    await update.message.reply_text(
+        f"🎧 *CANLI DESTEK* 🎧\n\n"
+        f"İnsan desteğine ihtiyacın varsa:\n"
+        f"{STARZBET_BILGILERI['canli_destek']}\n\n"
+        f"⏰ 7/24 hizmet\n"
+        f"💬 Türkçe destek",
+        reply_markup=ana_menu(),
+        parse_mode=ParseMode.MARKDOWN
+    )
 
 # ANA PROGRAM
 def main():
@@ -222,28 +287,29 @@ def main():
         level=logging.INFO
     )
     
-    print("🚀 Starzbet422.com Resmi Botu başlatılıyor...")
-    print("📊 Veri kaynağı: starzbet422.com")
+    print("🚀 STARZBET AI BOT BAŞLATILIYOR...")
+    print(f"🔗 Resmi Site: {STARZBET_BILGILERI['resmi_site']}")
+    print(f"🤖 AI Durumu: {'AKTİF' if OPENAI_KEY else 'PASİF'}")
+    print("✅ Kontrollü AI - Saçmalamayacak")
     
     try:
-        # İlk veri çekme testi
-        veriler = get_guncel_veriler()
-        print(f"✅ Site bağlantısı: {'Aktif' if veriler['site_aktif'] else 'Pasif'}")
-        print(f"🕒 Son güncelleme: {veriler['son_guncelleme']}")
-        
         app = Application.builder().token(TOKEN).build()
+        
+        # Handler'lar
         app.add_handler(CommandHandler("start", start))
+        app.add_handler(CommandHandler("reset", komut_reset))
+        app.add_handler(CommandHandler("destek", komut_destek))
         app.add_handler(CallbackQueryHandler(button_handler))
         app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, mesaj_handler))
         
         print("✅ Bot hazır!")
-        print("📱 Telegram'da /start yazın")
-        print("⚠️ Sadece starzbet422.com bilgileri paylaşılacak")
+        print("📱 /start komutunu bekliyor...")
+        print("💬 AI aktif, kontrollü konuşacak")
         
         app.run_polling(drop_pending_updates=True)
         
     except Exception as e:
-        print(f"❌ Hata: {e}")
+        print(f"❌ CRITICAL HATA: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":
