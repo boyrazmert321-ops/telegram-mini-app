@@ -130,9 +130,8 @@ if GROQ_API_KEY:
 # 6. DİNAMİKPAY SİSTEMİ (GERÇEK VERİLER)
 DINAMIKPAY_SISTEMI = {
     "odemeler": {
-        "papara": {"komisyon": "%0", "limit": "Min 100₺ - Max 50.000₺", "sure": "ANINDA"},
-        "jeton": {"komisyon": "%0", "limit": "Min 100₺ - Max 30.000₺", "sure": "ANINDA"},
-        "cebbank": {"komisyon": "%0", "limit": "Min 100₺ - Max 100.000₺", "sure": "ANINDA"},
+        "papara": {"komisyon": "%0", "limit": "Min 500₺ - Max 50.000₺", "sure": "ANINDA"},
+        "HAVALE/EFT": {"komisyon": "%0", "limit": "Min 500₺ - Max 100.000₺", "sure": "ANINDA"},
         "kredi_karti": {"komisyon": "%0", "limit": "Min 100₺ - Max 20.000₺", "sure": "2-5 dk"},
         "bitcoin": {"komisyon": "%0", "limit": "Min 500₺ - Max 500.000₺", "sure": "10-30 dk"}
     },
