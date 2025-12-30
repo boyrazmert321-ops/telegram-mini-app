@@ -21,8 +21,7 @@ LINK_MINI_APP = "https://telegram-mini-app-umber-chi.vercel.app"
 # --- 2. YAPAY ZEKA YAPILANDIRMASI (GEMINI) ---
 genai.configure(api_key=GEMINI_API_KEY)
 model = genai.GenerativeModel(
-    model_name='gemini-1.5-flash',
-    generation_config={"candidate_count": 1}
+    model_name='gemini-1.5-flash-latest'
 )
 
 AI_TALIMATI = (
@@ -144,3 +143,31 @@ if __name__ == '__main__':
 
     print("🚀 Starzbet Botu Aktif Ediliyor...")
     application.run_polling(drop_pending_updates=True)
+# Model tanımlama kısmını TAM OLARAK bu 3 satırla değiştir:
+model = genai.GenerativeModel(
+    model_name='gemini-1.5-flash-latest'  # "-latest" eki çoğu 404 hatasını çözer
+)
+
+# AI fonksiyonundaki hata yakalama kısmını da şu şekilde güncelle ki 
+# Google'ın bize gönderdiği asıl teknik sebebi görelim:
+async def ai_asistan(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not update.message or not update.message.text: return
+    prompt = f"{AI_TALIMATI}\nKullanıcı: {update.message.text}"
+    try:
+        # En gevşek güvenlik ayarları
+        safety = [
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
+        ]
+        response = model.generate_content(prompt, safety_settings=safety)
+        await update.message.reply_text(response.text, parse_mode=ParseMode.HTML, reply_markup=ana_menu_kb())
+    except Exception as e:
+        # Hata 404 ise alternatif modeli dene (Otomatik Kurtarma)
+        try:
+            alt_model = genai.GenerativeModel('gemini-1.0-pro')
+            response = alt_model.generate_content(prompt)
+            await update.message.reply_text(response.text, parse_mode=ParseMode.HTML, reply_markup=ana_menu_kb())
+        except:
+            await update.message.reply_text(f"❌ Teknik Engel: {str(e)}", reply_markup=ana_menu_kb())
