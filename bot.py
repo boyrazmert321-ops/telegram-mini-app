@@ -112,16 +112,7 @@ def chat_menu():
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ai_durum = "✅ Aktif" if GROQ_API_KEY else "❌ Devre Dışı"
     
-    mesaj = f"""🌟 *STARZBET422.COM AI ASİSTANI* 🌟
-
-🤖 *AI Durumu:* {ai_durum}
-🕒 *Son Güncelleme:* {datetime.now().strftime("%d.%m.%Y %H:%M")}
-
-🎯 *NELER YAPABİLİRİM:*
-• Starzbet hakkında her şeyi anlatırım
-• Bonus ve kampanyaları açıklarım
-• Bahis/casino konularında yardım ederim
-• Samimi sohbet ederim (kanka gibi)
+    mesaj = f"""🌟 *STARZBET TELEGRAM HATTINA HOŞGELDİNİZ* 🌟
 
 💬 *AI ile konuşmak için:* "AI İLE KONUŞ" butonuna bas
 🎧 *Canlı insan için:* Canlı Destek butonu
