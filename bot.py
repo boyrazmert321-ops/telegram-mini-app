@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-STARZBET AI TELEGRAM BOT - GÜNCELLENMİŞ GROQ API
+STARZBET AI TELEGRAM BOT - TAM ÇALIŞAN VERSİYON
 """
 
 import os
 import sys
 import logging
 import json
+import asyncio
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -24,15 +25,12 @@ from telegram.constants import ParseMode
 import requests
 
 # ========== KONFİGÜRASYON ==========
-# TELEGRAM TOKEN (BUNA DİKKAT!)
 TELEGRAM_TOKEN = "8031564377:AAHjJXBQ-b6f0BnKdbf6T7iwUjs1fCA7dW0"
-
-# GROQ API KEY (SENİN VERDİĞİN ANAHTAR)
 GROQ_API_KEY = "gsk_lHTS30e86lFzxmC3F7ROWGdyb3FYamQVtSUb5fg3G5PuNgyauBN"
 
 # STARZBET BİLGİLERİ
 STARZBET = {
-    "site": "https://starzbet422.com",
+    "site": "https://starzbet423.com",
     "kayit": "https://starzbet422.com/tr-tr/register",
     "bonus": "https://starzbet422.com/tr-tr/info/promos",
     "spor": "https://starzbet422.com/sports",
@@ -43,54 +41,38 @@ STARZBET = {
     "giris": "https://starzbet422.com/tr-tr/info/access"
 }
 
-# GROQ MODELLERİ (Yeni model de dahil)
-GROQ_MODELS = {
-    "llama": "llama-3.3-70b-versatile",  # Orjinal model
-    "gpt": "openai/gpt-oss-120b",  # Yeni GPT modeli
-    "mixtral": "mixtral-8x7b-32768",  # Diğer alternatif
-    "gemma": "gemma2-9b-it"  # Daha hızlı model
-}
-
-# Aktif model (değiştirebilirsin)
-ACTIVE_MODEL = GROQ_MODELS["llama"]
+# Aktif model
+ACTIVE_MODEL = "llama-3.3-70b-versatile"
 
 # ========== LOGGING ==========
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO,
+    level=logging.DEBUG,  # DEBUG moduna alındı
     handlers=[
-        logging.FileHandler('starzbet_bot.log', encoding='utf-8'),
+        logging.FileHandler('bot_debug.log', encoding='utf-8'),
         logging.StreamHandler()
     ]
 )
 logger = logging.getLogger(__name__)
 
-# ========== SİSTEM PROMPT'İ ==========
+# ========== SİSTEM PROMPT ==========
 SYSTEM_PROMPT = """Sen Starzbet422.com'un resmi AI asistanısın. 
-Kullanıcılara profesyonel, net ve yardımcı cevaplar ver.
+Kısa, net ve yardımcı cevaplar ver.
 
-ÖNEMLİ KURALLAR:
-1. SADECE starzbet422.com hakkında konuş
-2. Asla başka site önerme
-3. Kısa ve öz cevaplar ver (max 3-4 cümle)
-4. Türkçe dışında dil kullanma
-5. Samimi hitap (kanka, dostum) KULLANMA
-6. Linkleri her zaman paylaş
+KURALLAR:
+1. SADECE STARZBET hakkında konuş
+2. Kısa cevap ver (max 2-3 cümle)
+3. Link ekle
+4. Profesyonel ol
 
-TEMEL BİLGİLER:
-- Resmi Site: https://starzbet422.com
-- Kayıt: https://starzbet422.com/tr-tr/register
-- Bonuslar: https://starzbet422.com/tr-tr/info/promos
-- Spor Bahis: https://starzbet422.com/sports
-- Casino: https://starzbet422.com/live-casino
+BİLGİLER:
+- Site: https://starzbet423.com
+- Kayıt: https://starzbet423.com/tr-tr/register
+- Bonus: https://starzbet423.com/tr-tr/info/promos
+- Spor: https://starzbet423.com/sports
+- Casino: https://starzbet423.com/live-casino
 - Destek: https://service.3kanumaigc.com/chatwindow.aspx?siteId=90005302&planId=1b050682-cde5-4176-8236-3bb94c891197#
-- APK: https://starzbet422.com/apk
-
-CEVAP FORMATI:
-• Direkt soruya odaklan
-• Gereksiz detay verme
-• Link ekle
-• Profesyonel kal"""
+- APK: https://starzbet423.com/apk"""
 
 # ========== MENÜLER ==========
 def ana_menu():
@@ -108,42 +90,35 @@ def ana_menu():
             InlineKeyboardButton("🎧 CANLI DESTEK", url=STARZBET["destek"]),
             InlineKeyboardButton("📢 TELEGRAM", url=STARZBET["telegram"])
         ],
-        [InlineKeyboardButton("💬 AI İLE KONUŞ", callback_data="ai_chat")]
+        [InlineKeyboardButton("💬 SORU SOR", callback_data="soru_sor")]
     ]
     return InlineKeyboardMarkup(keyboard)
 
-def chat_menu():
+def soru_menu():
     keyboard = [
-        [InlineKeyboardButton("💰 BONUS SOR", callback_data="soru_bonus")],
-        [InlineKeyboardButton("⚽ BAHİS SOR", callback_data="soru_bahis")],
-        [InlineKeyboardButton("🎮 CASİNO SOR", callback_data="soru_casino")],
-        [InlineKeyboardButton("💳 PARA İŞLEMLERİ", callback_data="soru_para")],
+        [InlineKeyboardButton("💰 BONUS SOR", callback_data="bonus_sor")],
+        [InlineKeyboardButton("⚽ BAHİS SOR", callback_data="bahis_sor")],
+        [InlineKeyboardButton("🎮 CASİNO SOR", callback_data="casino_sor")],
+        [InlineKeyboardButton("💳 PARA SOR", callback_data="para_sor")],
         [
-            InlineKeyboardButton("🔗 LİNKLER", callback_data="soru_linkler"),
+            InlineKeyboardButton("🔗 LİNKLER", callback_data="linkler_goster"),
             InlineKeyboardButton("📝 KAYIT OL", url=STARZBET["kayit"])
         ],
         [
-            InlineKeyboardButton("🔄 MODEL DEĞİŞTİR", callback_data="model_degistir"),
+            InlineKeyboardButton("🎧 CANLI DESTEK", url=STARZBET["destek"]),
             InlineKeyboardButton("🏠 ANA MENÜ", callback_data="ana_menu")
         ]
     ]
     return InlineKeyboardMarkup(keyboard)
 
-def model_menu():
-    keyboard = [
-        [InlineKeyboardButton(f"🤖 Llama 3.3 (Hızlı)", callback_data="model_llama")],
-        [InlineKeyboardButton(f"🧠 GPT OSS 120B (Akıllı)", callback_data="model_gpt")],
-        [InlineKeyboardButton(f"⚡ Mixtral (Orta)", callback_data="model_mixtral")],
-        [InlineKeyboardButton(f"🚀 Gemma 2 (Çok Hızlı)", callback_data="model_gemma")],
-        [InlineKeyboardButton("🔙 GERİ", callback_data="ana_menu")]
-    ]
-    return InlineKeyboardMarkup(keyboard)
-
-# ========== GROQ API FONKSİYONLARI ==========
-async def groq_api_soru(soru: str, model: str = None) -> Dict[str, Any]:
-    """Groq API'ye soru gönder"""
-    if model is None:
-        model = ACTIVE_MODEL
+# ========== GROQ API ==========
+def groq_soru(soru: str) -> str:
+    """Groq API'ye soru gönder ve cevap al"""
+    
+    # API anahtarı kontrolü
+    if not GROQ_API_KEY or GROQ_API_KEY == "":
+        logger.error("API anahtarı yok!")
+        return manuel_cevap(soru)
     
     url = "https://api.groq.com/openai/v1/chat/completions"
     
@@ -153,134 +128,104 @@ async def groq_api_soru(soru: str, model: str = None) -> Dict[str, Any]:
     }
     
     data = {
-        "model": model,
+        "model": ACTIVE_MODEL,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f"Lütfen kısa ve net cevap ver: {soru}"}
+            {"role": "user", "content": soru}
         ],
         "temperature": 0.7,
-        "max_tokens": 300,
+        "max_tokens": 200,
         "top_p": 0.9
     }
     
     try:
-        response = requests.post(url, headers=headers, json=data, timeout=15)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        logger.error(f"API Hatası: {e}")
-        return None
-
-async def groq_cevap_al(soru: str) -> str:
-    """AI'dan cevap al"""
-    
-    # API anahtarı kontrolü
-    if not GROQ_API_KEY or len(GROQ_API_KEY) < 20:
-        return "⚠️ API anahtarı gerekli. Lütfen canlı desteğe başvurun."
-    
-    # Typing efekti için bekle
-    await asyncio.sleep(0.5)
-    
-    try:
-        # İlk deneme
-        result = await groq_api_soru(soru, ACTIVE_MODEL)
+        logger.info(f"API'ye soru gönderiliyor: {soru[:50]}...")
+        response = requests.post(url, headers=headers, json=data, timeout=10)
+        logger.info(f"API yanıt kodu: {response.status_code}")
         
-        if result and "choices" in result:
+        if response.status_code == 200:
+            result = response.json()
             cevap = result["choices"][0]["message"]["content"]
-            
-            # Cevabı temizle
-            cevap = cevap.strip()
-            
-            # Çok uzunsa kısalt
-            if len(cevap) > 800:
-                cevap = cevap[:800] + "...\n\n*Devamı için canlı desteğe başvurun.*"
-            
-            # Link kontrolü - eğer link yoksa ekle
-            if STARZBET["site"] not in cevap:
-                cevap += f"\n\n🔗 Detaylı bilgi: {STARZBET['site']}"
-            
+            logger.info(f"API başarılı, cevap uzunluğu: {len(cevap)}")
             return cevap
-        
-        # Eğer ilk model çalışmazsa alternatif dene
-        logger.warning(f"Model {ACTIVE_MODEL} çalışmadı, alternatif deneniyor...")
-        
-        for model_name, model in GROQ_MODELS.items():
-            if model != ACTIVE_MODEL:
-                result = await groq_api_soru(soru, model)
-                if result and "choices" in result:
-                    cevap = result["choices"][0]["message"]["content"]
-                    return f"🤖 ({model_name.upper()} MODEL):\n\n{cevap}"
-        
-        # Tüm modeller başarısız olursa
-        return f"🌟 **Starzbet422.com**\n\nSorunuz için en güncel bilgileri sitemizde bulabilirsiniz:\n🔗 {STARZBET['site']}\n\nVeya canlı destek: {STARZBET['destek']}"
-        
+        else:
+            logger.error(f"API hatası: {response.status_code} - {response.text}")
+            return manuel_cevap(soru)
+            
     except Exception as e:
-        logger.error(f"AI Cevap Hatası: {e}")
-        return await manuel_cevap(soru)
+        logger.error(f"API istisnası: {e}")
+        return manuel_cevap(soru)
 
-async def manuel_cevap(soru: str) -> str:
-    """Manuel cevap sistemi"""
+def manuel_cevap(soru: str) -> str:
+    """API çalışmazsa manuel cevap ver"""
     soru_lower = soru.lower()
     
-    cevaplar = {
-        "bonus": f"💰 **Bonuslar:**\n\nStarzbet'te çeşitli bonuslar mevcuttur. Detaylar:\n{STARZBET['bonus']}",
-        "bahis": f"⚽ **Spor Bahisleri:**\n\nCanlı bahis ve yüksek oranlar. Hemen başla:\n{STARZBET['spor']}",
-        "casino": f"🎮 **Casino:**\n\nCanlı casino ve slot oyunları. Oyna:\n{STARZBET['casino']}",
-        "kayıt": f"📝 **Kayıt:**\n\nÜcretsiz kayıt için:\n{STARZBET['kayit']}",
-        "apk": f"📱 **APK:**\n\nMobil uygulama indir:\n{STARZBET['apk']}",
-        "destek": f"🎧 **Destek:**\n\n7/24 canlı destek:\n{STARZBET['destek']}",
-        "para": f"💳 **Para İşlemleri:**\n\nKolay para yatırma/çekme. Detaylar için destek:\n{STARZBET['destek']}"
-    }
+    if "bonus" in soru_lower:
+        return f"🎁 **Starzbet Bonusları:**\n\nÇeşitli bonuslar mevcut. Detaylar: {STARZBET['bonus']}"
     
-    for anahtar, cevap in cevaplar.items():
-        if anahtar in soru_lower:
-            return cevap
+    elif any(k in soru_lower for k in ["bahis", "spor", "iddaa"]):
+        return f"⚽ **Spor Bahisleri:**\n\nCanlı bahis ve yüksek oranlar: {STARZBET['spor']}"
     
-    # Genel cevap
-    return f"🤖 **Starzbet Asistanı**\n\nSize nasıl yardımcı olabilirim?\n\n**Hızlı Erişim:**\n• Bonus: /bonus\n• Linkler: /linkler\n• Destek: /destek\n\n🔗 **Site:** {STARZBET['site']}"
+    elif any(k in soru_lower for k in ["casino", "rulet", "slot"]):
+        return f"🎰 **Casino Oyunları:**\n\nCanlı casino: {STARZBET['casino']}"
+    
+    elif any(k in soru_lower for k in ["kayıt", "üye", "register"]):
+        return f"📝 **Kayıt Ol:**\n\nHızlı kayıt: {STARZBET['kayit']}"
+    
+    elif any(k in soru_lower for k in ["apk", "mobil", "indir"]):
+        return f"📱 **APK İndir:**\n\nMobil uygulama: {STARZBET['apk']}"
+    
+    elif any(k in soru_lower for k in ["yardım", "yardim", "help"]):
+        return f"🤖 **Starzbet Asistanı**\n\nSize nasıl yardımcı olabilirim?\n\nKomutlar:\n• /bonus - Bonuslar\n• /linkler - Linkler\n• /destek - Destek\n\n🔗 Site: {STARZBET['site']}"
+    
+    else:
+        return f"🤖 **Starzbet Asistanı**\n\nSoru: '{soru}'\n\nEn iyi hizmet için:\n🔗 Site: {STARZBET['site']}\n🎧 Destek: {STARZBET['destek']}"
 
 # ========== KOMUTLAR ==========
-async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    
-    # AI durumu
-    ai_durum = "✅ AKTİF" if GROQ_API_KEY and len(GROQ_API_KEY) > 20 else "⚠️ MANUEL"
-    model_bilgi = f"Model: {ACTIVE_MODEL.split('/')[-1]}"
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Start komutu"""
+    logger.info(f"/start komutu: {update.effective_user.id}")
     
     mesaj = (
-        f"🌟 **HOŞ GELDİN {user.first_name}!** 🌟\n\n"
+        f"🌟 **HOŞ GELDİN {update.effective_user.first_name}!** 🌟\n\n"
         f"🤖 **Starzbet AI Asistanı**\n"
-        f"🔧 **Durum:** {ai_durum}\n"
-        f"🧠 **{model_bilgi}**\n"
+        f"✅ **Durum:** Aktif\n"
+        f"🧠 **Model:** Llama 3.3\n"
         f"🕐 **{datetime.now().strftime('%d.%m.%Y %H:%M')}**\n\n"
-        f"**KULLANIM:**\n"
-        f"• Butonlarla hızlı erişim\n"
-        f"• Direkt soru sorabilirsin\n"
-        f"• AI ile konuşabilirsin\n\n"
+        f"**NASIL KULLANILIR:**\n"
+        f"1. Butonlara tıklayın\n"
+        f"2. Direkt soru yazın\n"
+        f"3. Komutları kullanın\n\n"
         f"**KOMUTLAR:**\n"
-        f"/bonus - Bonus bilgileri\n"
-        f"/linkler - Tüm linkler\n"
-        f"/destek - Canlı destek\n"
-        f"/model - AI modelini değiştir\n"
-        f"/reset - Sıfırla\n\n"
-        f"🔗 **Resmi:** {STARZBET['site']}"
+        f"• /bonus - Bonus bilgileri\n"
+        f"• /linkler - Tüm linkler\n"
+        f"• /destek - Canlı destek\n"
+        f"• /reset - Sıfırla\n\n"
+        f"🔗 **Resmi Site:** {STARZBET['site']}"
     )
     
     await update.message.reply_text(
         mesaj,
         reply_markup=ana_menu(),
-        parse_mode=ParseMode.MARKDOWN
+        parse_mode=ParseMode.MARKDOWN,
+        disable_web_page_preview=True
     )
+    logger.info("Start mesajı gönderildi")
 
-async def bonus_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def bonus(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Bonus komutu"""
+    logger.info("/bonus komutu")
+    
     mesaj = (
-        f"💰 **STARZBET BONUS SİSTEMİ**\n\n"
-        f"🎁 **Hoşgeldin Bonusu** - Yeni üyelere\n"
-        f"⚽ **Spor Bonusu** - Bahisler için\n"
-        f"🎰 **Casino Bonusu** - Oyunlar için\n"
-        f"🔄 **Yenileme Bonusu** - Düzenli oyunculara\n\n"
-        f"🔗 **Detaylar:** {STARZBET['bonus']}\n\n"
-        f"*Şartlar sitede belirtilmiştir.*"
+        f"💰 **STARZBET BONUSLARI**\n\n"
+        f"🎁 **Hoşgeldin Bonusu**\n"
+        f"Yeni üyelere özel\n\n"
+        f"⚽ **Spor Bonusları**\n"
+        f"Bahisler için ekstra\n\n"
+        f"🎰 **Casino Bonusu**\n"
+        f"Slot ve masa oyunları\n\n"
+        f"🔗 **Tüm bonuslar:** {STARZBET['bonus']}\n\n"
+        f"*Şartlar sitede mevcuttur.*"
     )
     
     await update.message.reply_text(
@@ -289,12 +234,15 @@ async def bonus_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN
     )
 
-async def linkler_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def linkler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Linkler komutu"""
+    logger.info("/linkler komutu")
+    
     mesaj = (
         f"🔗 **STARZBET LİNKLERİ**\n\n"
-        f"• 🌐 **Ana Site:** {STARZBET['site']}\n"
+        f"• 🌐 **Site:** {STARZBET['site']}\n"
         f"• 📝 **Kayıt:** {STARZBET['kayit']}\n"
-        f"• 🎁 **Bonuslar:** {STARZBET['bonus']}\n"
+        f"• 🎁 **Bonus:** {STARZBET['bonus']}\n"
         f"• ⚽ **Spor:** {STARZBET['spor']}\n"
         f"• 🎮 **Casino:** {STARZBET['casino']}\n"
         f"• 📱 **APK:** {STARZBET['apk']}\n"
@@ -308,17 +256,20 @@ async def linkler_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN
     )
 
-async def destek_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def destek(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Destek komutu"""
+    logger.info("/destek komutu")
+    
     mesaj = (
         f"🎧 **CANLI DESTEK**\n\n"
-        f"7/24 canlı destek ekibimiz:\n"
+        f"7/24 canlı destek:\n"
         f"{STARZBET['destek']}\n\n"
-        f"**Destek Konuları:**\n"
+        f"**Konular:**\n"
         f"• Hesap işlemleri\n"
         f"• Para yatırma/çekme\n"
-        f"• Teknik problemler\n"
+        f"• Teknik sorunlar\n"
         f"• Genel sorular\n\n"
-        f"⏰ **Çalışma Saatleri:** 24/7"
+        f"⏰ **7/24 Hizmet**"
     )
     
     await update.message.reply_text(
@@ -327,42 +278,23 @@ async def destek_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN
     )
 
-async def model_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    mesaj = (
-        f"🤖 **AI MODEL SEÇİMİ**\n\n"
-        f"**Mevcut Model:** {ACTIVE_MODEL}\n\n"
-        f"**Modeller:**\n"
-        f"• 🤖 Llama 3.3 - Hızlı ve dengeli\n"
-        f"• 🧠 GPT OSS 120B - Çok akıllı\n"
-        f"• ⚡ Mixtral - Orta seviye\n"
-        f"• 🚀 Gemma 2 - Çok hızlı\n\n"
-        f"Aşağıdan bir model seçin:"
-    )
+async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Reset komutu"""
+    logger.info("/reset komutu")
     
     await update.message.reply_text(
-        mesaj,
-        reply_markup=model_menu(),
-        parse_mode=ParseMode.MARKDOWN
-    )
-
-async def reset_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "🔄 **Sohbet sıfırlandı!**\n\nYeni bir konuşmaya başlayabilirsiniz.",
+        "🔄 **Sohbet sıfırlandı!**\n\nYeni bir konuşmaya başlayabilirsin.",
         reply_markup=ana_menu(),
         parse_mode=ParseMode.MARKDOWN
     )
 
 # ========== MESAJ HANDLER ==========
-async def mesaj_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_message = update.message.text
+async def mesaj_handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Normal mesajları işle"""
+    user_id = update.effective_user.id
+    mesaj_text = update.message.text
     
-    # Çok kısa mesaj kontrolü
-    if len(user_message.strip()) < 2:
-        await update.message.reply_text(
-            "Lütfen daha açıklayıcı bir soru sorun.",
-            reply_markup=chat_menu()
-        )
-        return
+    logger.info(f"Mesaj alındı: {user_id} - {mesaj_text[:50]}...")
     
     # Typing efekti
     await context.bot.send_chat_action(
@@ -371,115 +303,103 @@ async def mesaj_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     
     # AI'dan cevap al
-    cevap = await groq_cevap_al(user_message)
+    cevap = groq_soru(mesaj_text)
+    
+    logger.info(f"Cevap hazır, gönderiliyor...")
     
     await update.message.reply_text(
         cevap,
-        reply_markup=chat_menu(),
-        parse_mode=ParseMode.MARKDOWN
+        reply_markup=soru_menu(),
+        parse_mode=ParseMode.MARKDOWN,
+        disable_web_page_preview=True
     )
+    logger.info(f"Cevap gönderildi: {user_id}")
 
 # ========== BUTON HANDLER ==========
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Buton tıklamalarını işle"""
     query = update.callback_query
     await query.answer()
     
     data = query.data
-    global ACTIVE_MODEL
+    logger.info(f"Buton tıklandı: {data}")
     
     try:
         if data == "ana_menu":
             await query.edit_message_text(
-                "🏠 **Ana Menü**\n\nSize nasıl yardımcı olabilirim?",
+                "🏠 **Ana Menü**\n\nAşağıdaki seçeneklerden birini seçin:",
                 reply_markup=ana_menu(),
                 parse_mode=ParseMode.MARKDOWN
             )
         
-        elif data == "ai_chat":
+        elif data == "soru_sor":
             await query.edit_message_text(
-                "💬 **AI SOHBET MODU**\n\nStarzbet ile ilgili sorularınızı buraya yazın.\n\nÖrnek: 'Bonuslar neler?' veya 'Nasıl para yatırırım?'",
-                reply_markup=chat_menu(),
+                "💬 **SORU SOR**\n\nStarzbet ile ilgili sorularınızı buraya yazın.\n\nÖrnek: 'Bonuslar neler?' veya 'Nasıl kayıt olurum?'",
+                reply_markup=soru_menu(),
                 parse_mode=ParseMode.MARKDOWN
             )
         
-        elif data.startswith("model_"):
-            if data == "model_degistir":
-                await query.edit_message_text(
-                    "🤖 **Model Seçin**\n\nHangi AI modelini kullanmak istersiniz?",
-                    reply_markup=model_menu(),
-                    parse_mode=ParseMode.MARKDOWN
-                )
-            elif data == "model_llama":
-                ACTIVE_MODEL = GROQ_MODELS["llama"]
-                await query.edit_message_text(
-                    f"✅ **Model değiştirildi:** Llama 3.3\n\nArtık daha hızlı yanıt alacaksınız!",
-                    reply_markup=ana_menu(),
-                    parse_mode=ParseMode.MARKDOWN
-                )
-            elif data == "model_gpt":
-                ACTIVE_MODEL = GROQ_MODELS["gpt"]
-                await query.edit_message_text(
-                    f"✅ **Model değiştirildi:** GPT OSS 120B\n\nArtık daha akıllı yanıt alacaksınız!",
-                    reply_markup=ana_menu(),
-                    parse_mode=ParseMode.MARKDOWN
-                )
-            elif data == "model_mixtral":
-                ACTIVE_MODEL = GROQ_MODELS["mixtral"]
-                await query.edit_message_text(
-                    f"✅ **Model değiştirildi:** Mixtral\n\nOrta seviye AI aktif!",
-                    reply_markup=ana_menu(),
-                    parse_mode=ParseMode.MARKDOWN
-                )
-            elif data == "model_gemma":
-                ACTIVE_MODEL = GROQ_MODELS["gemma"]
-                await query.edit_message_text(
-                    f"✅ **Model değiştirildi:** Gemma 2\n\nÇok hızlı yanıtlar alacaksınız!",
-                    reply_markup=ana_menu(),
-                    parse_mode=ParseMode.MARKDOWN
-                )
+        elif data == "bonus":
+            await query.edit_message_text(
+                f"💰 **BONUSLAR**\n\nDetaylı bonus bilgileri:\n{STARZBET['bonus']}",
+                reply_markup=ana_menu(),
+                parse_mode=ParseMode.MARKDOWN
+            )
         
-        elif data.startswith("soru_"):
-            soru_tipi = data.replace("soru_", "")
-            
+        elif data == "spor":
+            await query.edit_message_text(
+                f"⚽ **SPOR BAHİS**\n\nSpor bahisleri için:\n{STARZBET['spor']}",
+                reply_markup=ana_menu(),
+                parse_mode=ParseMode.MARKDOWN
+            )
+        
+        elif data == "casino":
+            await query.edit_message_text(
+                f"🎮 **CASİNO**\n\nCasino oyunları için:\n{STARZBET['casino']}",
+                reply_markup=ana_menu(),
+                parse_mode=ParseMode.MARKDOWN
+            )
+        
+        elif data == "apk":
+            await query.edit_message_text(
+                f"📱 **APK İNDİR**\n\nMobil uygulama için:\n{STARZBET['apk']}",
+                reply_markup=ana_menu(),
+                parse_mode=ParseMode.MARKDOWN
+            )
+        
+        elif data == "linkler_goster":
+            await query.edit_message_text(
+                f"🔗 **LİNKLER**\n\n• Site: {STARZBET['site']}\n• Kayıt: {STARZBET['kayit']}\n• Destek: {STARZBET['destek']}",
+                reply_markup=soru_menu(),
+                parse_mode=ParseMode.MARKDOWN
+            )
+        
+        elif data.endswith("_sor"):
+            soru_tipi = data.replace("_sor", "")
             sorular = {
                 "bonus": "Starzbet bonusları nelerdir?",
                 "bahis": "Spor bahisleri nasıl oynanır?",
                 "casino": "Canlı casino oyunları neler?",
-                "para": "Para yatırma yöntemleri neler?",
-                "linkler": "Starzbet linklerini verir misin?"
+                "para": "Para yatırma yöntemleri neler?"
             }
             
             if soru_tipi in sorular:
-                cevap = await groq_cevap_al(sorular[soru_tipi])
                 await query.edit_message_text(
-                    cevap,
-                    reply_markup=chat_menu(),
+                    "⏳ **Cevap hazırlanıyor...**",
                     parse_mode=ParseMode.MARKDOWN
                 )
-        
-        elif data in ["bonus", "spor", "casino", "apk"]:
-            linkler = {
-                "bonus": STARZBET["bonus"],
-                "spor": STARZBET["spor"],
-                "casino": STARZBET["casino"],
-                "apk": STARZBET["apk"]
-            }
-            
-            isimler = {
-                "bonus": "Bonuslar",
-                "spor": "Spor Bahis",
-                "casino": "Canlı Casino",
-                "apk": "APK İndir"
-            }
-            
-            await query.edit_message_text(
-                f"🔗 **{isimler[data]}**\n\n{linkler[data]}",
-                reply_markup=ana_menu(),
-                parse_mode=ParseMode.MARKDOWN
-            )
+                
+                cevap = groq_soru(sorular[soru_tipi])
+                
+                await query.edit_message_text(
+                    cevap,
+                    reply_markup=soru_menu(),
+                    parse_mode=ParseMode.MARKDOWN,
+                    disable_web_page_preview=True
+                )
     
     except Exception as e:
-        logger.error(f"Buton hatası: {e}")
+        logger.error(f"Buton handler hatası: {e}")
         await query.message.reply_text(
             "❌ Bir hata oluştu. Lütfen tekrar deneyin.",
             parse_mode=ParseMode.MARKDOWN
@@ -488,40 +408,64 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ========== ANA PROGRAM ==========
 def main():
     print("=" * 60)
-    print("🤖 STARZBET GROQ AI BOT")
+    print("🤖 STARZBET TELEGRAM BOT - DEBUG MODE")
     print("=" * 60)
     
-    print(f"🔑 Token: {'✅' if TELEGRAM_TOKEN else '❌'}")
-    print(f"🤖 API Key: {'✅' if GROQ_API_KEY and len(GROQ_API_KEY) > 20 else '❌'}")
-    print(f"🧠 Model: {ACTIVE_MODEL}")
-    print(f"🌐 Site: {STARZBET['site']}")
+    print(f"✅ Token: {TELEGRAM_TOKEN[:10]}...")
+    print(f"✅ API Key: {GROQ_API_KEY[:10]}...")
+    print(f"✅ Model: {ACTIVE_MODEL}")
+    print(f"✅ Site: {STARZBET['site']}")
     print("🔄 Bot başlatılıyor...")
     
     try:
+        # Application oluştur
         app = Application.builder().token(TELEGRAM_TOKEN).build()
         
-        # Komutlar
-        app.add_handler(CommandHandler("start", start_command))
-        app.add_handler(CommandHandler("bonus", bonus_command))
-        app.add_handler(CommandHandler("linkler", linkler_command))
-        app.add_handler(CommandHandler("destek", destek_command))
-        app.add_handler(CommandHandler("model", model_command))
-        app.add_handler(CommandHandler("reset", reset_command))
-        app.add_handler(CommandHandler("yardim", start_command))
+        # DEBUG: Tüm güncellemeleri logla
+        app.add_handler(CommandHandler("start", start))
+        app.add_handler(CommandHandler("bonus", bonus))
+        app.add_handler(CommandHandler("linkler", linkler))
+        app.add_handler(CommandHandler("destek", destek))
+        app.add_handler(CommandHandler("reset", reset))
         
-        # Butonlar
+        # Buton handler
         app.add_handler(CallbackQueryHandler(button_handler))
         
-        # Mesajlar
-        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, mesaj_handler))
+        # MESAJ HANDLER - EN ÖNEMLİ KISIM
+        # Tüm metin mesajlarını al (komut hariç)
+        app.add_handler(MessageHandler(
+            filters.TEXT & ~filters.COMMAND,
+            mesaj_handle
+        ))
         
-        print("✅ Bot hazır!")
+        print("✅ Bot çalışmaya hazır!")
         print("📱 Telegram'da /start yazın")
+        print("📝 Loglar: bot_debug.log")
         
-        app.run_polling(drop_pending_updates=True)
+        # Polling başlat
+        app.run_polling(
+            drop_pending_updates=True,
+            timeout=30,
+            allowed_updates=Update.ALL_TYPES
+        )
         
     except Exception as e:
-        print(f"❌ HATA: {e}")
+        print(f"❌ CRITICAL ERROR: {type(e).__name__}: {e}")
+        
+        # Detaylı hata analizi
+        if "Unauthorized" in str(e):
+            print("\n🔴 HATA: Geçersiz Telegram Token!")
+            print(f"Token: {TELEGRAM_TOKEN[:15]}...")
+            print("👉 @BotFather'dan yeni token alın")
+        
+        elif "Connection" in str(e):
+            print("\n🔴 HATA: İnternet bağlantısı yok!")
+        
+        else:
+            print(f"\n🔴 HATA DETAYI:")
+            import traceback
+            traceback.print_exc()
+        
         sys.exit(1)
 
 if __name__ == "__main__":
