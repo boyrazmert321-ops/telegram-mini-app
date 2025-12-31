@@ -24,10 +24,11 @@ STARZBET_BILGILERI = {
     "canli_casino": "https://starzbet423.com/live-casino",
     "casino": "https://starzbet423.com/casino",
     "mobile_apk": "https://starzbet423.com/apk",
-    "telegram": "https://t.me/Starzbetgir",
+    "telegram_ozel_oran": "https://t.me/Starzbetgir",
     "canli_destek": "https://service.3kanumaigc.com/chatwindow.aspx?siteId=90005302&planId=1b050682-cde5-4176-8236-3bb94c891197#",
     "giris_problem": "https://starzbet423.com/tr-tr/info/access",
     "kayit": "https://starzbet423.com/tr-tr/register"
+    "telegram": "https://t.me/starzbetcom"
 }
 
 # GROQ AI SİSTEM PROMPT'İ
