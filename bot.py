@@ -206,11 +206,11 @@ async def groq_ai_cevap(kullanici_sorusu, user_id=None):
             # Cevabı temizle ve kısalt
             ai_response = clean_text(ai_response)
             
-            # Türkçe kontrolü (basit)
+            # Türkçe kontrolü (basit) - Eğer Türkçe karakter azsa
             turkish_chars = set('abcçdefgğhıijklmnoöprsştuüvyzABCÇDEFGĞHIİJKLMNOÖPRSŞTUÜVYZ')
             char_count = sum(1 for char in ai_response[:100] if char in turkish_chars or char.isspace() or char in ',.!?;:')
             
-            if char_count < 50:  % Eğer Türkçe karakter azsa
+            if char_count < 50:  # Eğer Türkçe karakter azsa standart cevap ver
                 return "🌟 **Starzbet Hakkında:**\n\nDetaylı bilgi için lütfen resmi sitemizi ziyaret edin: https://starzbet422.com\n\nVeya canlı destekle iletişime geçin."
             
             return ai_response
