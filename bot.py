@@ -27,7 +27,7 @@ STARZBET_BILGILERI = {
     "telegram_ozel_oran": "https://t.me/Starzbetgir",
     "canli_destek": "https://service.3kanumaigc.com/chatwindow.aspx?siteId=90005302&planId=1b050682-cde5-4176-8236-3bb94c891197#",
     "giris_problem": "https://starzbet423.com/tr-tr/info/access",
-    "kayit": "https://starzbet423.com/tr-tr/register"
+    "kayit": "https://starzbet423.com/tr-tr/register",
     "telegram": "https://t.me/starzbetcom"
 }
 
@@ -46,11 +46,11 @@ GROQ_SYSTEM_PROMPT = """Sen STARZBET'in resmi AI asistanısın. Kullanıcılarla
 - Bonuslar: https://starzbet423.com/tr-tr/info/promos
 - Spor bahis: https://starzbet423.com/sports
 - Canlı casino: https://starzbet423.com/live-casino
-- Telegram: https://t.me/Starzbetgir
+ -Resmi Telegram Kanalı: "https://t.me/starzbetcom"
 - Canlı destek: https://service.3kanumaigc.com/chatwindow.aspx?siteId=90005302&planId=1b050682-cde5-4176-8236-3bb94c891197#
 - Giriş sorunu: https://starzbet423.com/tr-tr/info/access
 - APK: https://starzbet423.com/apk
-
+- Telegram Ozel Oran Kanalı: "https://t.me/Starzbetgir",
 🎯 **YARDIMCI OLACAĞIN KONULAR:**
 • Bonuslar ve kampanyalar
 • Para yatırma/çekme işlemleri
