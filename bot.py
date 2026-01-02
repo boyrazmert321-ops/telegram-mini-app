@@ -20,9 +20,9 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "gsk_lHTS30e86lFzxmC3F7ROWGdyb3FYa
 STARZBET_BILGILERI = {
     "resmi_site": "https://starzbet423.com",
     "bonus_sayfasi": "https://starzbet423.com/tr-tr/info/promos",
-    "spor_bahis": "https://starzbet423.com/sports",
-    "canli_casino": "https://starzbet423.com/live-casino",
-    "casino": "https://starzbet423.com/casino",
+    "spor_bahis": "https://starzbet423.com/tr-tr/prelive/home?period=all",
+    "canli_casino": "https://starzbet423.com/tr-tr/live_casino/label/c4c9e582-7068-4233-bbdc-37ec9fca0926",
+    "casino": "https://starzbet423.com/tr-tr/casino/label/c4c9e582-7068-4233-bbdc-37ec9fca0926o",
     "mobile_apk": "https://starzbet423.com/apk",
     "telegram_ozel_oran": "https://t.me/Starzbetgir",
     "canli_destek": "https://service.3kanumaigc.com/chatwindow.aspx?siteId=90005302&planId=1b050682-cde5-4176-8236-3bb94c891197#",
